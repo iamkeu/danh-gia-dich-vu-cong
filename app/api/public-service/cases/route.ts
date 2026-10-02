@@ -11,8 +11,6 @@ const createCaseSchema = z.object({
   appointmentDate: z.string().date().nullable().optional(),
   citizenDisplayName: z.string().trim().max(120).nullable().optional(),
   pdfStoragePath: z.string().trim().max(500).nullable().optional(),
-  ratingTemplateId: z.string().trim().max(120).nullable().optional(),
-  ratingTemplateData: z.record(z.string(), z.string()).default({}),
 });
 
 export async function GET() {
@@ -45,8 +43,6 @@ export async function POST(request: NextRequest) {
       appointment_date: body.appointmentDate ?? null,
       citizen_display_name: body.citizenDisplayName ?? null,
       pdf_storage_path: body.pdfStoragePath ?? null,
-      rating_template_id: body.ratingTemplateId ?? null,
-      rating_template_data: body.ratingTemplateData,
       created_by: account.id,
     }).select('id,case_code,procedure_name,department_name,officer_name,appointment_date,citizen_display_name,status,pdf_storage_path,created_at').single();
     if (error || !serviceCase) throw error || new Error('CASE_CREATE_FAILED');

@@ -1,9 +1,39 @@
-import {getValidAccessToken} from './token-store';
-const business='https://business.openapi.zalo.me';
-async function call(url:string,init:RequestInit){const r=await fetch(url,init);const j=await r.json();if(!r.ok||j.error)throw new Error(`ZALO_${j.error||r.status}:${j.message||'API error'}`);return j;}
-export async function listTemplates(oaId:string){const t=await getValidAccessToken(oaId);return call(`${business}/template/all?offset=0&limit=100&filterPreset=0`,{headers:{access_token:t}});}
-export async function getOAProfile(oaId:string){const t=await getValidAccessToken(oaId);return call('https://openapi.zalo.me/v2.0/oa/getoa',{headers:{access_token:t}});}
-export async function uploadFile(oaId:string,bytes:Buffer,name:string,mime:string){const t=await getValidAccessToken(oaId);const f=new FormData();f.append('file',new Blob([new Uint8Array(bytes)],{type:mime}),name);return call('https://openapi.zalo.me/v2.0/oa/upload/file',{method:'POST',headers:{access_token:t},body:f});}
-export async function sendFile(oaId:string,userId:string,token:string){const t=await getValidAccessToken(oaId);return call('https://openapi.zalo.me/v3.0/oa/message/cs',{method:'POST',headers:{access_token:t,'content-type':'application/json'},body:JSON.stringify({recipient:{user_id:userId},message:{attachment:{type:'file',payload:{token}}}})});}
-export async function sendVote(oaId:string,userId:string,templateId:string,templateData:Record<string,string>){const t=await getValidAccessToken(oaId);return call('https://openapi.zalo.me/v3.0/oa/message/template',{method:'POST',headers:{access_token:t,'content-type':'application/json'},body:JSON.stringify({user_id:userId,template_id:templateId,template_data:templateData})});}
-export async function getRatings(oaId:string,templateId:string,from:number,to:number){const t=await getValidAccessToken(oaId);return call(`${business}/rating/get?template_id=${encodeURIComponent(templateId)}&from_time=${from}&to_time=${to}&offset=0&limit=100`,{method:'POST',headers:{access_token:t}});}
+import { getValidAccessToken } from './token-store';
+
+async function call(url: string, init: RequestInit) {
+  const response = await fetch(url, init);
+  const body = await response.json();
+  if (!response.ok || body.error) throw new Error(`ZALO_${body.error || response.status}:${body.message || 'API error'}`);
+  return body;
+}
+
+export async function getOAProfile(oaId: string) {
+  const token = await getValidAccessToken(oaId);
+  return call('https://openapi.zalo.me/v2.0/oa/getoa', { headers: { access_token: token } });
+}
+
+export async function uploadFile(oaId: string, bytes: Buffer, name: string, mime: string) {
+  const token = await getValidAccessToken(oaId);
+  const form = new FormData();
+  form.append('file', new Blob([new Uint8Array(bytes)], { type: mime }), name);
+  return call('https://openapi.zalo.me/v2.0/oa/upload/file', { method: 'POST', headers: { access_token: token }, body: form });
+}
+
+export async function sendFile(oaId: string, userId: string, fileToken: string) {
+  const token = await getValidAccessToken(oaId);
+  return call('https://openapi.zalo.me/v3.0/oa/message/cs', {
+    method: 'POST',
+    headers: { access_token: token, 'content-type': 'application/json' },
+    body: JSON.stringify({ recipient: { user_id: userId }, message: { attachment: { type: 'file', payload: { token: fileToken } } } }),
+  });
+}
+
+export async function sendRatingInvitation(oaId: string, userId: string, miniAppUrl: string) {
+  const token = await getValidAccessToken(oaId);
+  const text = `Trung tâm Phục vụ Hành chính công\n\nGiấy hẹn trả kết quả đã được phát hành.\nVui lòng xem giấy hẹn đính kèm và đánh giá chất lượng phục vụ tại:\n${miniAppUrl}`;
+  return call('https://openapi.zalo.me/v3.0/oa/message/cs', {
+    method: 'POST',
+    headers: { access_token: token, 'content-type': 'application/json' },
+    body: JSON.stringify({ recipient: { user_id: userId }, message: { text } }),
+  });
+}

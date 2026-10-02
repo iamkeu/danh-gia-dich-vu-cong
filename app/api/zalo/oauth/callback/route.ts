@@ -3,5 +3,31 @@ import { requireUser, authError } from '@/lib/authz';
 import { createSupabaseAdminClient } from '@/lib/supabase/server';
 import { exchangeCode, encryptToken } from '@/lib/zalo/token-store';
 import { getPkceCookieName, readPkceCookie } from '@/lib/zalo/pkce';
-const ZALO_VERIFICATION_META='<meta name="zalo-platform-site-verification" content="EiQV0i3CCXytxxa1zkKD01VgWLhxd5e5DJ8q" />';
-export async function GET(req:NextRequest){const code=req.nextUrl.searchParams.get('code');const oaId=req.nextUrl.searchParams.get('oa_id');const returnedState=req.nextUrl.searchParams.get('state');if(!code&&!oaId)return new NextResponse(`<!doctype html><html lang="vi"><head>${ZALO_VERIFICATION_META}<meta charset="utf-8"><title>Zalo OAuth callback</title></head><body>Zalo OAuth callback</body></html>`,{headers:{'content-type':'text/html; charset=utf-8','cache-control':'public, max-age=300'}});try{const {profile}=await requireUser(['admin']);if(!code||!oaId||!returnedState)return NextResponse.json({error:'missing oauth params'},{status:400});const cookieValue=req.cookies.get(getPkceCookieName())?.value;const pkce=readPkceCookie(cookieValue);if(pkce.state!==returnedState)throw new Error('INVALID_OAUTH_STATE');const j=await exchangeCode(code,pkce.verifier);const db=createSupabaseAdminClient();await db.from('zalo_oa_accounts').update({is_active:false}).eq('is_active',true);const {error}=await db.from('zalo_oa_accounts').upsert({oa_id:oaId,app_id:process.env.ZALO_APP_ID!,access_token_ciphertext:encryptToken(j.access_token),refresh_token_ciphertext:encryptToken(j.refresh_token),token_expires_at:new Date(Date.now()+Number(j.expires_in)*1000).toISOString(),connected_at:new Date().toISOString(),is_active:true},{onConflict:'oa_id'});if(error)throw error;await db.from('audit_logs').insert({actor_id:profile.id,action:'zalo.oauth.connected',entity_type:'zalo_oa_accounts',metadata:{oaId}});const response=NextResponse.redirect(new URL('/settings?connected=1',req.url));response.cookies.set(getPkceCookieName(),'',{httpOnly:true,secure:process.env.NODE_ENV==='production',sameSite:'lax',path:'/api/zalo/oauth/callback',maxAge:0});return response;}catch(e){return authError(e);}}
+
+const ZALO_VERIFICATION_META = '<meta name="zalo-platform-site-verification" content="PSMZ8B3742mxnh4uulDbDGVivJRhcZvfDJas" />';
+
+export async function GET(req: NextRequest) {
+  const code = req.nextUrl.searchParams.get('code');
+  const oaId = req.nextUrl.searchParams.get('oa_id');
+  const returnedState = req.nextUrl.searchParams.get('state');
+  if (!code && !oaId) {
+    return new NextResponse(`<!doctype html><html lang="vi"><head>${ZALO_VERIFICATION_META}<meta charset="utf-8"><title>Zalo OAuth callback</title></head><body>Zalo OAuth callback</body></html>`, { headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'public, max-age=300' } });
+  }
+  try {
+    const { profile } = await requireUser(['admin']);
+    if (!code || !oaId || !returnedState) return NextResponse.json({ error: 'missing oauth params' }, { status: 400 });
+    const pkce = readPkceCookie(req.cookies.get(getPkceCookieName())?.value);
+    if (pkce.state !== returnedState) throw new Error('INVALID_OAUTH_STATE');
+    const tokenResponse = await exchangeCode(code, pkce.verifier);
+    const db = createSupabaseAdminClient();
+    await db.from('zalo_oa_accounts').update({ is_active: false }).eq('is_active', true);
+    const { error } = await db.from('zalo_oa_accounts').upsert({ oa_id: oaId, app_id: process.env.ZALO_APP_ID!, access_token_ciphertext: encryptToken(tokenResponse.access_token), refresh_token_ciphertext: encryptToken(tokenResponse.refresh_token), token_expires_at: new Date(Date.now() + Number(tokenResponse.expires_in) * 1000).toISOString(), connected_at: new Date().toISOString(), is_active: true }, { onConflict: 'oa_id' });
+    if (error) throw error;
+    await db.from('audit_logs').insert({ actor_id: profile.id, action: 'zalo.oauth.connected', entity_type: 'zalo_oa_accounts', metadata: { oaId } });
+    const response = NextResponse.redirect(new URL('/settings?connected=1', req.url));
+    response.cookies.set(getPkceCookieName(), '', { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax', path: '/api/zalo/oauth/callback', maxAge: 0 });
+    return response;
+  } catch (error) {
+    return authError(error);
+  }
+}

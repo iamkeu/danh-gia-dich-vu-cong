@@ -1,6 +1,6 @@
 export const metadata = {
   title: 'Zalo OA Gateway',
-  description: 'Backend Gateway – Zalo OA/ZNS/ZBS API',
+  description: 'Đánh giá Dịch vụ Công – Zalo OA và Mini App',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
