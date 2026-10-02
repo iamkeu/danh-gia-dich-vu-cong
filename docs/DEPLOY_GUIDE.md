@@ -1,115 +1,140 @@
-# DEPLOY_GUIDE.md — zoa-gateway-vercel
+# Hướng dẫn cấu hình Vercel — Đánh giá Dịch vụ Công
 
-Hướng dẫn deploy đầy đủ, không cần terminal/máy tính — làm được hoàn toàn
-trên điện thoại (trình duyệt Chrome/Safari). Đọc song song với
-`zoa-vote-gas/DEPLOY_GUIDE.md` — 2 phần xen kẽ nhau theo đúng thứ tự dưới đây.
+Tài liệu này dùng cho **project mới hoàn toàn**, không dùng `oavote`, `zoa-gw` hoặc `zoa-vote-gateway`.
 
-**Phạm vi hiện tại đã code xong:** Foundation, Auth (OAuth), Zalo Client,
-F02 (Rating Templates), F01 (Send File + Rating). **Chưa có:** F04
-(Follower), F03 (Webhook + Reconcile), F07/F08. Sau khi hoàn tất hướng dẫn
-này, bạn dùng được: đăng nhập GAS, kết nối OA, tạo mẫu đánh giá, gửi file +
-đánh giá thủ công (nhập UID tay). Chưa theo dõi được khách đã đánh giá hay
-chưa (phần đó code ở Phase 8).
+## 1. Thông tin hệ thống chính xác
 
-## 0. Thông số cần chuẩn bị từ phía Zalo
+| Thành phần | Giá trị |
+|---|---|
+| GitHub repository | `iamkeu/danh-gia-dich-vu-cong` |
+| Vercel project | `danh-gia-dich-vu-cong` |
+| Vercel project ID | `prj_syL3vBQa4RBKFevMvTj5TEU9az1y` |
+| Preview URL hiện tại | `https://danh-gia-dich-vu-cong-lgr9a5bqk-keithnguyenquang-4642.vercel.app` |
+| Supabase project | `danh-gia-dich-vu-cong` |
+| Supabase ref | `sixhitrjkwvwxqefwcup` |
+| Supabase region | `ap-southeast-1` |
+| Supabase API URL | `https://sixhitrjkwvwxqefwcup.supabase.co` |
+| Storage bucket | `danh-gia-dich-vu-cong-files` |
 
-| Thông số | Lấy ở đâu | Cần cho bước nào |
-|---|---|---|
-| OA đã tồn tại (Official Account của doanh nghiệp) | Đã có sẵn, hoặc tạo tại oa.zalo.me | Toàn bộ |
-| Zalo App đã tạo trên developers.zalo.me | Tự tạo (mục 3 dưới) | Toàn bộ |
-| App ID, App Secret Key | App console → Cài đặt | `ZALO_APP_ID`, `ZALO_APP_SECRET` |
-| 1 Template "Đánh giá dịch vụ" (template_type=5) đã ENABLE trên OA | Tạo qua giao diện ZBS Account (không qua API — xem API_CONTRACT.md mục 3.5) | Dùng khi tạo mẫu ở F02 |
-| Domain đã xác thực | App console → Xác thực domain | Bắt buộc trước khi khai báo Callback URL |
+Project `oavote` đã được **pause**, không được dùng làm database của hệ thống này.
 
-Chưa cần: Webhook URL / OA Secret Key (F03 chưa code, để sau).
+## 2. Các biến đã cấu hình tự động trên Vercel
 
-## 1. Đưa code lên GitHub (điện thoại)
+Các biến sau đã được thêm cho cả **Production, Preview và Development**:
 
-1. Giải nén file `zoa-gateway-vercel.zip` bằng ứng dụng quản lý file có sẵn
-   trên máy (Android: "Files"/trình quản lý file mặc định; iOS: app "Files"
-   → chạm giữ file zip → "Giải nén").
-2. Mở github.com bằng trình duyệt, đăng nhập (tạo tài khoản nếu chưa có).
-3. Bấm **+** góc trên → **New repository** → đặt tên `zoa-gateway-vercel` →
-   **Create repository**.
-4. Trong repo vừa tạo, bấm **Add file → Upload files**. Chọn TOÀN BỘ file
-   và thư mục đã giải nén (trình duyệt di động thường cho chọn nhiều file
-   cùng lúc; nếu không kéo được cả thư mục con, upload từng thư mục một —
-   `app/`, `lib/`, `prisma/`, `docs/`, `scripts/`, rồi các file gốc).
-5. Bấm **Commit changes**.
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `SUPABASE_STORAGE_BUCKET`
+- `NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET`
+- `NEXT_PUBLIC_APP_URL`
+- `PUBLIC_SERVICE_JWT_SECRET`
+- `TOKEN_ENCRYPTION_KEY`
+- `CRON_SECRET`
+- `MAX_FILE_SIZE_BYTES=5242880`
+- `FILE_RETENTION_HOURS=24`
+- `FAILED_FILE_RETENTION_HOURS=72`
 
-## 2. Tạo Neon Postgres + Deploy trên Vercel
+Các secret đã được lưu dưới dạng encrypted trên Vercel. Không đưa giá trị secret vào GitHub, tài liệu công khai hoặc tin nhắn.
 
-1. Mở vercel.com bằng trình duyệt → đăng nhập bằng tài khoản GitHub vừa dùng.
-2. **Add New → Project** → chọn repo `zoa-gateway-vercel` vừa đẩy lên →
-   **Import**.
-3. **CHƯA bấm Deploy vội** — cuộn xuống mục Environment Variables, thêm các
-   biến (giá trị `ZALO_APP_ID`/`ZALO_APP_SECRET` lấy ở bước 3 bên dưới, có
-   thể điền tạm rồi sửa lại sau):
+## 3. Hai nhóm biến cần bổ sung thủ công
 
-   | Tên biến | Giá trị |
-   |---|---|
-   | `ZALO_APP_ID` | (điền sau khi tạo App ở bước 3) |
-   | `ZALO_APP_SECRET` | (điền sau khi tạo App ở bước 3) |
-   | `TOKEN_ENCRYPTION_KEY` | gõ bừa 1 chuỗi dài ngẫu nhiên ≥32 ký tự (bàn phím điện thoại gõ loạn cũng được, miễn đủ dài) |
-   | `SETUP_SECRET` | 1 chuỗi ngẫu nhiên khác, tự đặt, nhớ để dùng ở bước 4 |
-   | `OAUTH_CALLBACK_URL` | để tạm `https://placeholder.vercel.app/api/oauth/callback` — QUAY LẠI SỬA ở bước 3.4 khi đã biết domain thật |
-   | `ZALO_OAUTH_CODE_VERIFIER` | để tạm trống — điền ở bước 4 |
-   | `CRON_SECRET` | 1 chuỗi ngẫu nhiên bất kỳ (chưa dùng tới, để sẵn) |
+### 3.1 `SUPABASE_SERVICE_ROLE_KEY`
 
-4. Trước khi bấm Deploy: vào tab **Storage** trong Vercel (hoặc mục Marketplace
-   ngay trong màn hình tạo project) → **Create Database → Neon (Postgres)** →
-   làm theo hướng dẫn (miễn phí) → Vercel tự động thêm biến `DATABASE_URL`
-   vào project, bạn không cần tự nhập.
-5. Bấm **Deploy**. Vercel sẽ tự chạy `npm install` → `prisma generate` →
-   `prisma db push` (tự tạo bảng trong Neon) → `next build` — không cần bạn
-   chạy lệnh gì cả.
-6. Sau khi deploy xong, Vercel cho 1 domain dạng
-   `https://zoa-gateway-vercel-xxxx.vercel.app`. **Copy domain này lại.**
-7. Vào **Settings → Environment Variables**, sửa `OAUTH_CALLBACK_URL` thành
-   `https://<domain-thật-của-bạn>/api/oauth/callback`, **Save**, rồi vào tab
-   **Deployments** → bấm vào bản deploy mới nhất → nút **Redeploy** để áp
-   dụng biến vừa sửa.
+Biến này bắt buộc cho API server-side vì backend cần đọc/ghi database và private Storage bằng service role.
 
-## 3. Tạo Zalo App (nếu chưa có)
+Cách lấy:
 
-1. Mở developers.zalo.me bằng trình duyệt điện thoại, đăng nhập.
-2. **Tạo ứng dụng mới** (chọn loại phù hợp, vd "Ứng dụng cho doanh nghiệp"/
-   OA OpenAPI tuỳ giao diện hiện tại) → điền tên, mô tả, danh mục.
-3. Vào **Cài đặt** của App vừa tạo → copy **ID ứng dụng** và **Khóa bí mật**
-   → dán vào Vercel Environment Variables (`ZALO_APP_ID`, `ZALO_APP_SECRET`)
-   → **Save** → Redeploy (như bước 2.7).
-4. Vào **Xác thực domain** → làm theo hướng dẫn xác thực domain Vercel của
-   bạn (thường là thêm 1 file hoặc thẻ meta — làm được từ điện thoại vì chỉ
-   cần Vercel cho phép bạn thêm route tĩnh, hoặc dùng phương thức DNS nếu
-   bạn có domain riêng; nếu vướng bước này, đây là điểm cần hỏi thêm).
+1. Mở [Supabase Dashboard](https://supabase.com/dashboard).
+2. Chọn project **danh-gia-dich-vu-cong**.
+3. Vào **Project Settings → API**.
+4. Tìm **Project API keys**.
+5. Sao chép key có nhãn **service_role** hoặc **secret**. Không dùng key `anon`.
+6. Mở [Vercel Dashboard](https://vercel.com/dashboard) → chọn project **danh-gia-dich-vu-cong**.
+7. Vào **Settings → Environment Variables → Add New**.
+8. Nhập:
+   - **Key:** `SUPABASE_SERVICE_ROLE_KEY`
+   - **Value:** dán service role key
+   - **Environments:** chọn `Production`, `Preview`, `Development`
+   - **Sensitive/Encrypted:** bật nếu giao diện có lựa chọn này
+9. Bấm **Save**.
 
-## 4. Lấy Gateway API key + cặp PKCE (không cần terminal)
+Không gửi service role key qua chat và không commit vào GitHub.
 
-Mở 2 đường dẫn sau bằng trình duyệt điện thoại (thay `<domain>` = domain
-Vercel thật, `<SETUP_SECRET>` = giá trị bạn đặt ở bước 2.3):
+### 3.2 Các biến Zalo
 
+Chỉ thêm sau khi đã có Zalo App/OA thật:
+
+| Key | Giá trị lấy từ đâu |
+|---|---|
+| `ZALO_APP_ID` | App Console của Zalo |
+| `ZALO_APP_SECRET` | App Console của Zalo; lưu encrypted |
+| `ZALO_OAUTH_CODE_VERIFIER` | Giá trị PKCE do quy trình cấp quyền tạo |
+| `OA_WEBHOOK_SECRET` | App Console → Webhook; lưu encrypted |
+| `OAUTH_CALLBACK_URL` | `https://danh-gia-dich-vu-cong-lgr9a5bqk-keithnguyenquang-4642.vercel.app/api/zalo/oauth/callback` |
+
+`ZALO_APP_SECRET`, `ZALO_OAUTH_CODE_VERIFIER` và `OA_WEBHOOK_SECRET` phải chọn kiểu **Sensitive/Encrypted**.
+
+## 4. Redeploy sau khi thêm env
+
+Sau mỗi lần thêm hoặc sửa env:
+
+1. Vào Vercel project **danh-gia-dich-vu-cong**.
+2. Chọn tab **Deployments**.
+3. Mở deployment mới nhất.
+4. Chọn menu **⋯ → Redeploy**.
+5. Khi vừa thay `SUPABASE_SERVICE_ROLE_KEY` hoặc migration, chọn **Redeploy without cache** nếu có lựa chọn.
+
+## 5. Kiểm tra sau cấu hình
+
+### 5.1 Kiểm tra website
+
+Mở:
+
+```text
+https://danh-gia-dich-vu-cong-lgr9a5bqk-keithnguyenquang-4642.vercel.app/
 ```
-https://<domain>/api/setup/create-client?name=zoa-vote-gas&secret=<SETUP_SECRET>
+
+Kết quả mong đợi: HTTP 200.
+
+### 5.2 Kiểm tra API chưa đăng nhập
+
+Mở:
+
+```text
+https://danh-gia-dich-vu-cong-lgr9a5bqk-keithnguyenquang-4642.vercel.app/api/public-service/cases
 ```
-→ Trang hiện ra 1 API key — **copy lại**, dùng ở bước cài GAS (mục
-`zoa-vote-gas/DEPLOY_GUIDE.md`).
 
-```
-https://<domain>/api/setup/generate-pkce?secret=<SETUP_SECRET>
-```
-→ Trang hiện `code_verifier` (dán vào Vercel env `ZALO_OAUTH_CODE_VERIFIER`,
-Save, Redeploy) và `code_challenge` (dán vào form "Thiết lập đường dẫn yêu
-cầu cấp quyền" trong Zalo App console cùng với Callback URL đã xác thực).
+Khi đủ env, kết quả mong đợi là HTTP `401` với mã `UNAUTHENTICATED`, không phải HTTP `500`.
 
-**Xong 2 bước trên: vào Vercel Environment Variables, XOÁ biến
-`SETUP_SECRET`, Save, Redeploy.** Nếu không xoá, ai biết được URL + secret
-này cũng tự tạo thêm API key gọi vào Gateway của bạn.
+### 5.3 Kiểm tra database
 
-## 5. Kiểm tra nhanh
+Trong Supabase Dashboard → **Table Editor**, phải thấy tối thiểu:
 
-Mở `https://<domain>/` trên trình duyệt — thấy trang giới thiệu Gateway là
-deploy thành công. `https://<domain>/api/zalo/templates` sẽ báo lỗi 401
-(đúng — vì bạn chưa gắn API key vào request, đây là bảo vệ hoạt động đúng).
+- `admin_accounts`
+- `service_cases`
+- `service_case_tokens`
+- `service_case_links`
+- `service_ratings`
+- `service_notification_attempts`
+- `service_case_audit_logs`
 
-Bước tiếp theo: sang `zoa-vote-gas/docs/DEPLOY_GUIDE.md` để dựng GAS Web
-App, kết nối OA, rồi quay lại kiểm tra toàn luồng.
+RLS phải bật cho các bảng này.
+
+## 6. Cấu hình callback Zalo
+
+1. Trong Zalo App Console, khai báo callback:
+   `https://danh-gia-dich-vu-cong-lgr9a5bqk-keithnguyenquang-4642.vercel.app/api/zalo/oauth/callback`
+2. Khai báo webhook:
+   `https://danh-gia-dich-vu-cong-lgr9a5bqk-keithnguyenquang-4642.vercel.app/api/webhook/zalo`
+3. Bật đúng các event webhook cần dùng.
+4. Cập nhật các biến Zalo trên Vercel.
+5. Redeploy.
+
+## 7. Nguyên tắc an toàn
+
+- Không dùng URL/key của `oavote`.
+- Không dùng `zoa-gw` làm callback hoặc production URL.
+- Không gửi `SUPABASE_SERVICE_ROLE_KEY` cho người khác.
+- Không commit `.env.local`.
+- Không xóa hoặc reset migration đã chạy trên project mới.
+- Trước pilot phải chạy mock Zalo, integration test, contract test và E2E trên Preview.

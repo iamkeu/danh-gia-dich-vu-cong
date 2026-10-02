@@ -6,7 +6,7 @@ Hệ thống hỗ trợ cán bộ tạo hồ sơ dịch vụ công, liên kết 
 
 - GitHub: `iamkeu/danh-gia-dich-vu-cong`
 - Branch production dự kiến: `main`
-- Supabase: project `oavote`
+- Supabase: project `danh-gia-dich-vu-cong` (ref `sixhitrjkwvwxqefwcup`)
 - Vercel: cần liên kết project production với repository này; các project `zoa-gw`/`zoa-vote-gateway` chỉ là tài nguyên tham chiếu/legacy và không phải repository chính.
 
 ## Trạng thái hiện tại
@@ -43,7 +43,7 @@ Không commit `.env.local`, service-role key, Zalo secret, webhook secret hoặc
 ## Triển khai
 
 1. GitHub push branch/merge vào `main`.
-2. Vercel project phải import repository `iamkeu/danh-gia-dich-vu-cong` và cấu hình Root Directory là thư mục chứa `package.json`.
+2. Vercel project `danh-gia-dich-vu-cong` đã import repository `iamkeu/danh-gia-dich-vu-cong` và cấu hình Root Directory là thư mục chứa `package.json`.
 3. Supabase migration được quản lý bằng file versioned trong `supabase/migrations/`; không dùng thao tác destructive trên production.
 4. Cấu hình callback Zalo và webhook sau khi domain Vercel của repository này đã được xác định.
 5. Chỉ promote Production sau khi Preview đã chạy smoke test và test giả lập đầy đủ.

@@ -2,7 +2,7 @@
 
 ## 1. Quyết định nền tảng
 
-Tiếp tục trên repository `iamkeu/zoa-gw` và Vercel project `zoa-gw`, không tạo repo/project mới mặc định. Supabase đích là project `oavote` (`jgphybctvkkfnzenfbpr`). Repository `danh-gia-dich-vu-cong` hiện chỉ có README nên sẽ được giữ làm repo tài liệu/định danh dự án, không phải codebase triển khai chính.
+Repository và codebase chính là `iamkeu/danh-gia-dich-vu-cong`. Vercel project chính là `danh-gia-dich-vu-cong`. Supabase là project riêng `danh-gia-dich-vu-cong` (ref `sixhitrjkwvwxqefwcup`). Các tài nguyên `zoa-gw`, `zoa-vote-gateway` và `oavote` là legacy, không được dùng làm database production của hệ thống mới.
 
 Ứng dụng dùng Next.js full-stack trên Vercel. Backend API, giao diện quản trị và các route callback/webhook nằm trong cùng một deployment. Mã nguồn Mini App được thêm thành package riêng trong cùng monorepo để tái sử dụng shared types/validation, có build adapter theo Zalo Mini App SDK. Việc phát hành Mini App vẫn phải thực hiện qua Mini App Center của Zalo vì đây là bước bắt buộc của nền tảng, nhưng source, CI và artefact build vẫn quản lý trên GitHub.
 
@@ -149,8 +149,8 @@ Chạy lint/typecheck/unit/integration/contract/E2E, kiểm tra migration/adviso
 
 ## 9. Ràng buộc phải theo dõi
 
-- `zoa-gw` đang deploy trên Vercel và link GitHub `iamkeu/zoa-gw`; repo `danh-gia-dich-vu-cong` không phải codebase hiện hành.
-- Supabase `oavote` hiện dùng Supabase Auth và có dữ liệu/schema OA gateway; quyết định chuyển sang JWT custom cần migration/additive, không được xóa dữ liệu hiện có.
+- Vercel/GitHub/Supabase production đều dùng tài nguyên riêng của `danh-gia-dich-vu-cong`.
+- `oavote` đã được pause vì là project legacy; không trỏ env production hoặc migration mới vào đó.
 - Tài liệu API hiện hành ghi file Zalo có thời hạn tối đa 7 ngày và quota riêng; giao diện phải nói rõ giới hạn nếu người dùng xem lại giấy hẹn.
 - Cơ chế `idByOA`, quyền Message Template/webhook rating và loại tin chứa đồng thời PDF + deep link phải kiểm chứng trên App/OA thật.
 - Không đưa secret vào GitHub, Mini App bundle hoặc logs.

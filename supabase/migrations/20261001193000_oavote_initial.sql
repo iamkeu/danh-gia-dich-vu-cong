@@ -147,10 +147,10 @@ create policy operator_insert_transactions on public.transactions for insert wit
 create policy active_read_events on public.transaction_events for select using (public.is_active_user() and exists(select 1 from public.transactions t where t.id = transaction_id and (t.created_by = auth.uid() or public.has_role('admin'))));
 create policy admin_read_audit on public.audit_logs for select using (public.has_role('admin'));
 
-insert into storage.buckets (id, name, public) values ('oavote-files', 'oavote-files', false) on conflict (id) do nothing;
-create policy oavote_files_read on storage.objects for select to authenticated using (bucket_id = 'oavote-files' and (owner_id = auth.uid()::text or public.is_active_user()));
-create policy oavote_files_insert on storage.objects for insert to authenticated with check (bucket_id = 'oavote-files' and owner_id = auth.uid()::text and public.has_role('operator'));
-create policy oavote_files_delete on storage.objects for delete to authenticated using (bucket_id = 'oavote-files' and (owner_id = auth.uid()::text or public.has_role('admin')));
+insert into storage.buckets (id, name, public) values ('danh-gia-dich-vu-cong-files', 'danh-gia-dich-vu-cong-files', false) on conflict (id) do nothing;
+create policy oavote_files_read on storage.objects for select to authenticated using (bucket_id = 'danh-gia-dich-vu-cong-files' and (owner_id = auth.uid()::text or public.is_active_user()));
+create policy oavote_files_insert on storage.objects for insert to authenticated with check (bucket_id = 'danh-gia-dich-vu-cong-files' and owner_id = auth.uid()::text and public.has_role('operator'));
+create policy oavote_files_delete on storage.objects for delete to authenticated using (bucket_id = 'danh-gia-dich-vu-cong-files' and (owner_id = auth.uid()::text or public.has_role('admin')));
 
 revoke execute on function public.has_role(public.app_role) from public, anon, authenticated;
 revoke execute on function public.is_active_user() from public, anon, authenticated;

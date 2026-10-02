@@ -4,7 +4,7 @@
 
 MVP là một Next.js full-stack app chạy trên cùng một Vercel project, kết nối một Zalo OA duy nhất. User đăng nhập bằng Google qua Supabase Auth. File được lưu trong private Supabase Storage bucket tạm thời 24–72 giờ, sau đó backend gửi file và Vote template tới Zalo UID.
 
-Production deployment hiện tại: Vercel project `zoa-gw`, domain `https://zoa-gw.vercel.app`. Không dùng tên project cũ `zoa-vote-gateway`.
+Production deployment hiện tại: Vercel project `danh-gia-dich-vu-cong`, domain `https://danh-gia-dich-vu-cong-lgr9a5bqk-keithnguyenquang-4642.vercel.app`. Các project `zoa-gw` và `zoa-vote-gateway` là legacy, không thuộc hệ thống mới.
 
 ## 2. Runtime architecture
 
@@ -26,7 +26,7 @@ Vercel / Next.js
 Supabase
   ├─ Auth
   ├─ PostgreSQL + RLS
-  └─ private Storage: oavote-files
+  └─ private Storage: danh-gia-dich-vu-cong-files
         ↓
 Zalo OA / ZBS APIs
 ```
@@ -82,7 +82,7 @@ Every create/send request supplies `Idempotency-Key`. The key is unique per user
 
 ## 7. Storage lifecycle
 
-Bucket `oavote-files` is private. Object path is `{user_id}/{transaction_id}/{random}-{safe_filename}`. The database records the path and expiry. A daily Vercel Cron deletes expired objects and marks them deleted. Successful processing keeps the object only until `storage_expires_at`; failed requests may remain up to 72 hours.
+Bucket `danh-gia-dich-vu-cong-files` is private. Object path is `{user_id}/{transaction_id}/{random}-{safe_filename}`. The database records the path and expiry. A daily Vercel Cron deletes expired objects and marks them deleted. Successful processing keeps the object only until `storage_expires_at`; failed requests may remain up to 72 hours.
 
 ## 8. Internal API contract
 
