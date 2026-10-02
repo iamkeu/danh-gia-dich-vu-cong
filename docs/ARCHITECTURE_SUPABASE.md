@@ -4,7 +4,7 @@
 
 MVP là một Next.js full-stack app chạy trên cùng một Vercel project, kết nối một Zalo OA duy nhất. User đăng nhập bằng Google qua Supabase Auth. File được lưu trong private Supabase Storage bucket tạm thời 24–72 giờ, sau đó backend gửi file và Vote template tới Zalo UID.
 
-Production deployment hiện tại: Vercel project `danh-gia-dich-vu-cong`, domain `https://danh-gia-dich-vu-cong-lgr9a5bqk-keithnguyenquang-4642.vercel.app`. Các project `zoa-gw` và `zoa-vote-gateway` là legacy, không thuộc hệ thống mới.
+Production deployment hiện tại: Vercel project `danh-gia-dich-vu-cong`, domain `https://danh-gia-dich-vu-cong.vercel.app`. Các project `zoa-gw` và `zoa-vote-gateway` là legacy, không thuộc hệ thống mới.
 
 ## 2. Runtime architecture
 

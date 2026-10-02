@@ -9,7 +9,7 @@ Tài liệu này dùng cho **project mới hoàn toàn**, không dùng `oavote`,
 | GitHub repository | `iamkeu/danh-gia-dich-vu-cong` |
 | Vercel project | `danh-gia-dich-vu-cong` |
 | Vercel project ID | `prj_syL3vBQa4RBKFevMvTj5TEU9az1y` |
-| Preview URL hiện tại | `https://danh-gia-dich-vu-cong-lgr9a5bqk-keithnguyenquang-4642.vercel.app` |
+| Preview URL hiện tại | `https://danh-gia-dich-vu-cong.vercel.app` |
 | Supabase project | `danh-gia-dich-vu-cong` |
 | Supabase ref | `sixhitrjkwvwxqefwcup` |
 | Supabase region | `ap-southeast-1` |
@@ -69,7 +69,7 @@ Chỉ thêm sau khi đã có Zalo App/OA thật:
 | `ZALO_APP_ID` | App Console của Zalo |
 | `ZALO_APP_SECRET` | App Console của Zalo; lưu encrypted |
 | `OA_WEBHOOK_SECRET` | App Console → Webhook; lưu encrypted |
-| `OAUTH_CALLBACK_URL` | `https://danh-gia-dich-vu-cong-lgr9a5bqk-keithnguyenquang-4642.vercel.app/api/zalo/oauth/callback` |
+| `OAUTH_CALLBACK_URL` | `https://danh-gia-dich-vu-cong.vercel.app/api/zalo/oauth/callback` |
 
 `ZALO_APP_SECRET` và `OA_WEBHOOK_SECRET` phải chọn kiểu **Sensitive/Encrypted**. Không tạo hoặc nhập `ZALO_OAUTH_CODE_VERIFIER`: backend tự sinh một verifier mới cho mỗi phiên OAuth, lưu tạm trong cookie HttpOnly có chữ ký và xóa sau callback thành công.
 
@@ -90,7 +90,7 @@ Sau mỗi lần thêm hoặc sửa env:
 Mở:
 
 ```text
-https://danh-gia-dich-vu-cong-lgr9a5bqk-keithnguyenquang-4642.vercel.app/
+https://danh-gia-dich-vu-cong.vercel.app/
 ```
 
 Kết quả mong đợi: HTTP 200.
@@ -100,7 +100,7 @@ Kết quả mong đợi: HTTP 200.
 Mở:
 
 ```text
-https://danh-gia-dich-vu-cong-lgr9a5bqk-keithnguyenquang-4642.vercel.app/api/public-service/cases
+https://danh-gia-dich-vu-cong.vercel.app/api/public-service/cases
 ```
 
 Khi đủ env, kết quả mong đợi là HTTP `401` với mã `UNAUTHENTICATED`, không phải HTTP `500`.
@@ -122,9 +122,9 @@ RLS phải bật cho các bảng này.
 ## 6. Cấu hình callback Zalo
 
 1. Trong Zalo App Console, khai báo callback:
-   `https://danh-gia-dich-vu-cong-lgr9a5bqk-keithnguyenquang-4642.vercel.app/api/zalo/oauth/callback`
+   `https://danh-gia-dich-vu-cong.vercel.app/api/zalo/oauth/callback`
 2. Khai báo webhook:
-   `https://danh-gia-dich-vu-cong-lgr9a5bqk-keithnguyenquang-4642.vercel.app/api/webhook/zalo`
+   `https://danh-gia-dich-vu-cong.vercel.app/api/webhook/zalo`
 3. Bật đúng các event webhook cần dùng.
 4. Cập nhật các biến Zalo trên Vercel.
 5. Redeploy.
