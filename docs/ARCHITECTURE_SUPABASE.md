@@ -1,8 +1,8 @@
-# OAvote — Vercel + Supabase Architecture
+# Đánh giá Dịch vụ Công — Kiến trúc Vercel + Supabase
 
 ## 1. Scope
 
-MVP là một Next.js full-stack app chạy trên cùng một Vercel project, kết nối một Zalo OA duy nhất. User đăng nhập bằng Google qua Supabase Auth. File được lưu trong private Supabase Storage bucket tạm thời 24–72 giờ, sau đó backend gửi file và Vote template tới Zalo UID.
+MVP là một Next.js full-stack app chạy trên cùng một Vercel project, kết nối một Zalo OA duy nhất. User đăng nhập bằng Google qua Supabase Auth. File được lưu trong private Supabase Storage bucket tạm thời 24–72 giờ, sau đó backend gửi file và mẫu tin đánh giá tới Zalo UID.
 
 Production deployment hiện tại: Vercel project `danh-gia-dich-vu-cong`, domain `https://danh-gia-dich-vu-cong.vercel.app`. Các project `zoa-gw` và `zoa-vote-gateway` là legacy, không thuộc hệ thống mới.
 
@@ -18,7 +18,7 @@ Vercel / Next.js
   ├─ auth/session + RBAC
   ├─ signed upload / cleanup
   ├─ Zalo OAuth and encrypted token store
-  ├─ send file + Vote template orchestration
+  ├─ send file + mẫu tin đánh giá orchestration
   ├─ transaction/event/audit writes
   ├─ Zalo webhook
   └─ Vercel Cron reconcile
@@ -52,8 +52,8 @@ Vercel server code uses the Supabase service-role key only on the server. Browse
 |---|:---:|:---:|:---:|
 | Login and view dashboard | yes | yes | yes |
 | Upload temporary file | yes | yes | no |
-| Send file + Vote | yes | yes | no |
-| Retry failed file/Vote part | yes | yes | no |
+| Send file + đánh giá | yes | yes | no |
+| Retry failed file/đánh giá part | yes | yes | no |
 | View own transactions | yes | yes | yes |
 | View all transactions | yes | no | no |
 | Read template catalog | yes | yes | yes |
@@ -71,10 +71,10 @@ Operator scope is own transactions in MVP. Every authorization decision is enfor
 
 - Transaction: `created → processing → completed|partial_failure|failed`.
 - File: `pending → processing → sent|failed`.
-- Vote: `pending → processing → sent|failed`.
+- đánh giá: `pending → processing → sent|failed`.
 - Rating: `not_applicable|pending|received`.
 
-The file and Vote operations are independent. A successful part is never resent by a retry of the other part.
+The file and đánh giá operations are independent. A successful part is never resent by a retry of the other part.
 
 ## 6. Idempotency and retry
 

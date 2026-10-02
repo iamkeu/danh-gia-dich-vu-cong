@@ -1,4 +1,4 @@
-# ZOA.vote / Zalo OA Gateway — API_CONTRACT.md
+# Đánh giá Dịch vụ Công / Zalo OA — API_CONTRACT.md
 
 **Trạng thái:** API Verification Gate (spec mục 13) — hoàn tất phần kỹ thuật.
 **Nguồn:** Tài liệu chính thức developers.zalo.me, xác minh trực tiếp qua bản sao người dùng cung cấp (không suy đoán endpoint/field).
