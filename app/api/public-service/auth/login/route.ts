@@ -5,7 +5,8 @@ import { createSupabaseAdminClient } from '@/lib/supabase/server';
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const email = String(body.email || '').trim().toLowerCase();
+    const login = String(body.email || body.username || '').trim().toLowerCase();
+    const email = login === 'admin' ? 'thangnq@gmail.com' : login;
     const password = String(body.password || '');
     if (!/^\S+@\S+\.\S+$/.test(email) || password.length < 8) {
       return NextResponse.json({ error: { code: 'INVALID_CREDENTIALS', message: 'Email hoặc mật khẩu không hợp lệ' } }, { status: 400 });
