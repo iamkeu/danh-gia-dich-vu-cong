@@ -30,11 +30,11 @@ export async function createSession(account: PublicServiceAccount) {
     .setIssuedAt()
     .setExpirationTime('8h')
     .sign(jwtSecret());
-  cookies().set(COOKIE_NAME, token, { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax', path: '/', maxAge: 8 * 60 * 60 });
+  cookies().set(COOKIE_NAME, token, { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax', path: '/', maxAge: 8 * 60 * 60 });
 }
 
 export function clearSession() {
-  cookies().set(COOKIE_NAME, '', { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax', path: '/', maxAge: 0 });
+  cookies().set(COOKIE_NAME, '', { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax', path: '/', maxAge: 0 });
 }
 
 export async function requirePublicServiceAccount(roles?: PublicServiceRole[]) {
