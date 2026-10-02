@@ -129,10 +129,11 @@ All authenticated routes return `{ data, error, requestId }` and use the Supabas
 - Roles: all authenticated users.
 - Returns enabled ZBS templates available to the single OA.
 
-### `POST /api/zalo/oauth/start`
+### `GET /api/zalo/oauth/start`
 
 - Roles: admin.
-- Returns Zalo permission URL. Callback is `/api/zalo/oauth/callback`.
+- Generates a fresh PKCE verifier and state per request, derives the S256 challenge, stores the signed short-lived verifier/state cookie, and returns the Zalo permission URL. Callback is `/api/zalo/oauth/callback`.
+- Callback validates the returned state against the cookie, exchanges the code with that session's verifier, then clears the cookie. No fixed `ZALO_OAUTH_CODE_VERIFIER` environment variable is used.
 
 ### `POST /api/webhook/zalo`
 

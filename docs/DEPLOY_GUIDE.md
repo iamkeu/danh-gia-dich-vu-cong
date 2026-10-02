@@ -68,11 +68,10 @@ Chỉ thêm sau khi đã có Zalo App/OA thật:
 |---|---|
 | `ZALO_APP_ID` | App Console của Zalo |
 | `ZALO_APP_SECRET` | App Console của Zalo; lưu encrypted |
-| `ZALO_OAUTH_CODE_VERIFIER` | Giá trị PKCE do quy trình cấp quyền tạo |
 | `OA_WEBHOOK_SECRET` | App Console → Webhook; lưu encrypted |
 | `OAUTH_CALLBACK_URL` | `https://danh-gia-dich-vu-cong-lgr9a5bqk-keithnguyenquang-4642.vercel.app/api/zalo/oauth/callback` |
 
-`ZALO_APP_SECRET`, `ZALO_OAUTH_CODE_VERIFIER` và `OA_WEBHOOK_SECRET` phải chọn kiểu **Sensitive/Encrypted**.
+`ZALO_APP_SECRET` và `OA_WEBHOOK_SECRET` phải chọn kiểu **Sensitive/Encrypted**. Không tạo hoặc nhập `ZALO_OAUTH_CODE_VERIFIER`: backend tự sinh một verifier mới cho mỗi phiên OAuth, lưu tạm trong cookie HttpOnly có chữ ký và xóa sau callback thành công.
 
 ## 4. Redeploy sau khi thêm env
 

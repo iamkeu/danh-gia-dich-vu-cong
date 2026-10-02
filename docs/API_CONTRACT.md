@@ -35,11 +35,11 @@ Header: secret_key: <app_secret>
 { "access_token": "...", "refresh_token": "...", "expires_in": "90000" }
 ```
 
-**PKCE:** `code_verifier` = chuỗi ngẫu nhiên 43 ký tự (hoa/thường/số) → `code_challenge = Base64URL(SHA-256(code_verifier))` (không padding).
+**PKCE:** Backend phải sinh `code_verifier` ngẫu nhiên mới cho **mỗi phiên OAuth** (43 ký tự Base64URL), tính `code_challenge = Base64URL(SHA-256(code_verifier))` (không padding), rồi gửi `code_challenge` và `code_challenge_method=S256` ở URL cấp quyền. Verifier không được đặt cố định trong Vercel env; backend lưu tạm verifier/state trong cookie HttpOnly có chữ ký, kiểm tra `state` ở callback và gửi đúng verifier khi exchange code.
 
 **URL cấp quyền (OA admin bấm "Cấp quyền"):**
 ```
-https://oauth.zaloapp.com/v4/oa/permission?app_id=<APP_ID>&redirect_uri=<CALLBACK_URL>
+https://oauth.zaloapp.com/v4/oa/permission?app_id=<APP_ID>&redirect_uri=<CALLBACK_URL>&state=<STATE>&code_challenge=<CODE_CHALLENGE>&code_challenge_method=S256
 ```
 Callback nhận `GET <redirect_uri>?code=<CODE>&oa_id=<OA_ID>`.
 
