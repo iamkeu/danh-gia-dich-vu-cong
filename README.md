@@ -7,7 +7,7 @@ Hệ thống hỗ trợ cán bộ tạo hồ sơ dịch vụ công, liên kết 
 - GitHub: `iamkeu/danh-gia-dich-vu-cong`
 - Branch production dự kiến: `main`
 - Supabase: project `danh-gia-dich-vu-cong` (ref `sixhitrjkwvwxqefwcup`)
-- Vercel: cần liên kết project production với repository này; các project `zoa-gw`/`zoa-vote-gateway` chỉ là tài nguyên tham chiếu/legacy và không phải repository chính.
+- Vercel: project `danh-gia-dich-vu-cong` đã liên kết với repository này; các project `zoa-gw`/`zoa-vote-gateway` chỉ là tài nguyên tham chiếu/legacy và không phải repository chính.
 
 ## Trạng thái hiện tại
 
