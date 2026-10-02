@@ -1,13 +1,12 @@
-import { createSupabaseAdminClient, createSupabaseServerClient } from '@/lib/supabase/server';
+import { requirePublicServiceAccount } from '@/lib/public-service/auth';
 export type AppRole = 'admin' | 'operator' | 'viewer';
 export async function requireUser(roles?: AppRole[]) {
-  const supabase = createSupabaseServerClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error('UNAUTHENTICATED');
-  const { data: profile } = await createSupabaseAdminClient().from('user_profiles').select('id,email,display_name,role,status').eq('id', user.id).single();
-  if (!profile || profile.status !== 'active') throw new Error('FORBIDDEN');
-  if (roles && !roles.includes(profile.role) && profile.role !== 'admin') throw new Error('FORBIDDEN');
-  return { user, profile, supabase };
+  const { account, db } = await requirePublicServiceAccount();
+  const role: AppRole = account.role === 'leader' ? 'viewer' : account.role;
+  if (roles && !roles.includes(role) && !(role === 'admin' && roles.length > 0)) throw new Error('FORBIDDEN');
+  const user = { id: account.id, email: account.email, user_metadata: { full_name: account.display_name }, app_metadata: { provider: 'password' } };
+  const profile = { id: account.id, email: account.email, display_name: account.display_name, role, status: account.status };
+  return { user, profile, supabase: db };
 }
 export function authError(error: unknown) {
   const message = error instanceof Error ? error.message : 'INTERNAL_ERROR';
