@@ -20,7 +20,7 @@ Lý do chưa go-live:
 
 ## Tài khoản admin test
 
-Tài khoản đã được tạo trong bảng `public.admin_accounts` của Supabase project mới.
+Tài khoản `thangnq@gmail.com` đã được tạo trong bảng `public.admin_accounts` của Supabase project mới; tài khoản `admin.test@...` trước đó đã bị khóa.
 
 Không commit mật khẩu vào repository. Lấy thông tin credential từ người quản lý dự án trong kênh bảo mật.
 
