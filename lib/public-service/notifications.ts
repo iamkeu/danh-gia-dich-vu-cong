@@ -17,7 +17,9 @@ export async function sendCase(caseId: string, actorId: string, onlyPart?: 'appo
   const parts: Array<'appointment_file' | 'rating_invitation'> = onlyPart ? [onlyPart] : ['appointment_file', 'rating_invitation'];
   const token = randomBytes(32).toString('base64url');
   const tokenHash = createHash('sha256').update(token).digest('hex');
-  let miniAppUrl = `${process.env.NEXT_PUBLIC_APP_URL || ''}/miniapp?token=${encodeURIComponent(token)}`;
+  const miniAppUrl = process.env.ZALO_MINI_APP_ID
+    ? `https://zalo.me/s/${process.env.ZALO_MINI_APP_ID}/?token=${encodeURIComponent(token)}`
+    : `${process.env.NEXT_PUBLIC_APP_URL || ''}/miniapp?token=${encodeURIComponent(token)}`;
   for (const part of parts) {
     const key = `${caseId}:${part}`;
     await db.from('service_notification_attempts').upsert({ case_id: caseId, part, idempotency_key: key, status: 'processing', updated_at: new Date().toISOString() }, { onConflict: 'case_id,part,idempotency_key' });

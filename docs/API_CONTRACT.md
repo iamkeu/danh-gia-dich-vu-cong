@@ -34,7 +34,7 @@ Không có ZBS, ZNS, Vote template hoặc màn hình quản lý template.
 
 ## Token và định danh
 
-Token được sinh ngẫu nhiên, chỉ lưu hash ở backend. Mini App lấy `zalo_uid` bằng `getUserID()` và backend đối chiếu với liên kết hồ sơ. Không dùng phone, location, avatar hoặc mã hồ sơ làm khóa định danh.
+Token được sinh ngẫu nhiên, chỉ lưu hash ở backend. Mini App gọi `getUserInfo()` và ưu tiên `userInfo.idByOA` để backend đối chiếu với liên kết hồ sơ; `getUserID()` chỉ là ID theo Zalo App, dùng làm thông tin phụ. Không dùng phone, location, avatar hoặc mã hồ sơ làm khóa định danh.
 
 ## OA message flow
 
