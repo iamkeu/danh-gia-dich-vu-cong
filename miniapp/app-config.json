@@ -1,0 +1,16 @@
+{
+  "app": {
+    "title": "Đánh giá Dịch vụ Công",
+    "headerTitle": {
+      "vi": "Đánh giá Dịch vụ Công",
+      "en": "Public Service Feedback"
+    },
+    "headerColor": "#213655",
+    "textColor": "white",
+    "leftButton": "back",
+    "statusBar": "normal",
+    "actionBarHidden": false,
+    "hideAndroidBottomNavigationBar": false,
+    "hideIOSSafeAreaBottom": false
+  }
+}
