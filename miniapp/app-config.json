@@ -12,5 +12,8 @@
     "actionBarHidden": false,
     "hideAndroidBottomNavigationBar": false,
     "hideIOSSafeAreaBottom": false
-  }
+  },
+  "listCSS": ["assets/index.css"],
+  "listSyncJS": ["assets/index.js"],
+  "listAsyncJS": []
 }
