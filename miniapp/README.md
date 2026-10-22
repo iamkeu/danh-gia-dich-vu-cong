@@ -20,6 +20,16 @@ npm run typecheck
 npm run build
 ```
 
+Trước khi build bản dùng thật, tạo/cập nhật file `.env` ở thư mục Mini App:
+
+```env
+VITE_API_BASE_URL=https://danh-gia-dich-vu-cong.vercel.app
+VITE_MINI_APP_ID=1935626247338797046
+VITE_ZALO_OA_ID=2171288717091266997
+```
+
+`VITE_ZALO_OA_ID` là OA đã liên kết với Mini App. Đây là ID công khai, nhưng không đưa Zalo App Secret hoặc access token vào Mini App.
+
 ## Cấu hình source có sẵn với ZMP CLI
 
 ```bash
@@ -87,11 +97,13 @@ https://zalo.me/s/{MINI_APP_ID}/?token=...
 1. Đọc `token` từ query string.
 2. Gọi `getUserID()` để lấy App UID phụ trợ.
 3. Gọi `getUserInfo()` và lấy `userInfo.idByOA`.
-4. Gọi API lấy hồ sơ bằng token.
-5. Hiển thị giấy hẹn và PDF.
-6. Công dân chọn 1–5 sao, nhập góp ý tùy chọn.
-7. Nếu có góp ý, bắt buộc tick checkbox đồng ý.
-8. Gửi `token`, `oaUid`, `stars`, `comment`, `commentConsent` về backend.
+4. Nếu chưa có `idByOA`, gọi `followOA({ id: VITE_ZALO_OA_ID })` sau khi công dân bấm nút quan tâm OA.
+5. Gọi lại `getUserInfo()` và hiển thị nút “Xác nhận nhận kết quả hồ sơ”.
+6. Gửi `token` và `oaUid` đến API xác nhận để liên kết đúng hồ sơ.
+7. Gọi API lấy hồ sơ bằng token và hiển thị giấy hẹn/PDF.
+8. Công dân chọn 1–5 sao, nhập góp ý tùy chọn.
+9. Nếu có góp ý, bắt buộc tick checkbox đồng ý.
+10. Gửi `token`, `oaUid`, `stars`, `comment`, `commentConsent` về backend.
 
 ## Nguồn chính thức
 

@@ -13,6 +13,12 @@ const createCaseSchema = z.object({
   pdfStoragePath: z.string().trim().max(500).nullable().optional(),
 });
 
+function miniAppUrl(token: string) {
+  const appId = process.env.ZALO_MINI_APP_ID;
+  const base = appId ? `https://zalo.me/s/${appId}/` : `${process.env.NEXT_PUBLIC_APP_URL || ''}/miniapp`;
+  return `${base}?token=${encodeURIComponent(token)}`;
+}
+
 export async function GET() {
   try {
     const { account, db } = await requirePublicServiceAccount();
@@ -22,7 +28,8 @@ export async function GET() {
     if (error) throw error;
     const rows = await Promise.all((data || []).map(async item => {
       const { data: attempts } = await db.from('service_notification_attempts').select('part,status,retry_count,error_code,error_message,message_id,updated_at').eq('case_id', item.id).order('updated_at', { ascending: false }).limit(10);
-      return { ...item, notificationAttempts: attempts || [] };
+      const { data: link } = await db.from('service_case_links').select('confirmed_at,confirmation_method').eq('case_id', item.id).maybeSingle();
+      return { ...item, isConfirmed: Boolean(link?.confirmed_at), confirmationMethod: link?.confirmation_method || null, notificationAttempts: attempts || [] };
     }));
     return NextResponse.json({ data: rows });
   } catch (error) {
@@ -43,13 +50,14 @@ export async function POST(request: NextRequest) {
       appointment_date: body.appointmentDate ?? null,
       citizen_display_name: body.citizenDisplayName ?? null,
       pdf_storage_path: body.pdfStoragePath ?? null,
+      status: 'pending_confirmation',
       created_by: account.id,
     }).select('id,case_code,procedure_name,department_name,officer_name,appointment_date,citizen_display_name,status,pdf_storage_path,created_at').single();
     if (error || !serviceCase) throw error || new Error('CASE_CREATE_FAILED');
     const { error: tokenError } = await db.from('service_case_tokens').insert({ case_id: serviceCase.id, token_hash: hashOpaqueValue(token), expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() });
     if (tokenError) throw tokenError;
-    await db.from('service_case_audit_logs').insert({ case_id: serviceCase.id, actor_account_id: account.id, action: 'case.created', metadata: { caseCode: body.caseCode } });
-    return NextResponse.json({ data: { ...serviceCase, token } }, { status: 201 });
+    await db.from('service_case_audit_logs').insert({ case_id: serviceCase.id, actor_account_id: account.id, action: 'case.created', metadata: { caseCode: body.caseCode, confirmationRequired: true } });
+    return NextResponse.json({ data: { ...serviceCase, token, miniAppUrl: miniAppUrl(token) } }, { status: 201 });
   } catch (error) {
     if (error instanceof z.ZodError) return NextResponse.json({ error: { code: 'VALIDATION_ERROR', message: error.issues[0]?.message || 'Dữ liệu không hợp lệ' } }, { status: 400 });
     return publicServiceAuthError(error);
