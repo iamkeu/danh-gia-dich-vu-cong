@@ -1,3 +1,11 @@
 import { NextResponse } from 'next/server';
-import { requireUser, authError } from '@/lib/authz';
-export async function GET() { try { const { user, profile } = await requireUser(); return NextResponse.json({ data: { id: user.id, email: user.email, display_name: profile.display_name || user.user_metadata?.full_name || user.email, role: profile.role, status: profile.status, provider: user.app_metadata?.provider || 'google' } }); } catch (e) { return authError(e); } }
+import { publicServiceAuthError, requirePublicServiceAccount } from '@/lib/public-service/auth';
+
+export async function GET() {
+  try {
+    const { account } = await requirePublicServiceAccount();
+    return NextResponse.json({ data: account });
+  } catch (error) {
+    return publicServiceAuthError(error);
+  }
+}
