@@ -60,11 +60,13 @@ Chọn `Development` để kiểm tra nhanh hoặc `Testing` để tạo bản t
 ```json
 {
   "listCSS": ["assets/index.css"],
-  "listSyncJS": ["assets/index.js"]
+  "listSyncJS": ["assets/index.module.js"]
 }
 ```
 
 `vite.config.ts` đã được cấu hình tên asset ổn định để sau mỗi lần build không phải sửa hash thủ công.
+
+Vite được cấu hình `base: "./"` và entry bundle có hậu tố `.module.js` theo hướng dẫn chuyển đổi Web App của Zalo. Đây là bắt buộc khi Zalo nạp bundle qua `listSyncJS` từ CDN theo version Mini App.
 
 ## Backend
 
