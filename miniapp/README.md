@@ -20,6 +20,24 @@ npm run typecheck
 npm run build
 ```
 
+Nếu TypeScript báo `Cannot find module 'zmp-sdk'`, nguyên nhân là dependency chưa được cài trong chính thư mục `miniapp`. Chạy đúng các lệnh sau:
+
+```bash
+cd miniapp
+npm ci
+npm run typecheck
+npm run build
+```
+
+Không chạy `npm run typecheck` từ thư mục gốc thay cho thư mục `miniapp`. Nếu thư mục `node_modules` đang dở dang, có thể xóa rồi cài lại:
+
+```bash
+rm -rf node_modules
+npm ci
+```
+
+Trên Windows PowerShell dùng `Remove-Item -Recurse -Force node_modules` thay cho `rm -rf node_modules`. Gói `zmp-sdk` đã có sẵn trong `package.json` và `package-lock.json`, không cần tự tạo file khai báo TypeScript hoặc cài thủ công bằng một phiên bản khác.
+
 Trước khi build bản dùng thật, tạo/cập nhật file `.env` ở thư mục Mini App:
 
 ```env
