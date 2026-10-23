@@ -25,8 +25,6 @@ export default function App() {
     const queryToken = new URLSearchParams(window.location.search).get('token') || '';
     setToken(queryToken);
     if (!queryToken) {
-      setIsError(true);
-      setMessage('Liên kết hồ sơ không hợp lệ. Hãy quét QR hoặc mở Mini App từ tin nhắn Zalo OA.');
       setLoading(false);
       return;
     }
@@ -80,6 +78,10 @@ export default function App() {
   function showError(text: string) { setIsError(true); setMessage(text); }
 
   if (loading && !caseData) return <main className="page"><div className="card center">Đang tải thông tin hồ sơ…</div></main>;
+  if (!token) return <main className="page"><div className="container">
+    <header className="brand"><div className="logo">ĐG</div><div><div className="eyebrow">TRUNG TÂM PHỤC VỤ HÀNH CHÍNH CÔNG</div><h1>Đánh giá Dịch vụ Công</h1></div></header>
+    <section className="card welcome-card center"><div className="welcome-mark">✓</div><div className="eyebrow">MINI APP ĐÃ SẴN SÀNG</div><h2>Chào mừng Anh/Chị</h2><p className="muted">Mini App hỗ trợ xem giấy hẹn và gửi đánh giá chất lượng phục vụ hành chính công.</p><div className="welcome-steps"><div><b>01</b><span>Nhận mã QR hồ sơ từ cán bộ tại quầy.</span></div><div><b>02</b><span>Quét mã QR để mở đúng giấy hẹn của Anh/Chị.</span></div><div><b>03</b><span>Xác nhận nhận kết quả và gửi đánh giá 1–5 sao.</span></div></div><p className="privacy">Màn hình này được hiển thị khi Mini App được mở từ QR chung hoặc kho Mini App. Dữ liệu hồ sơ chỉ hiển thị khi mở bằng liên kết có mã hồ sơ hợp lệ.</p></section>
+  </div></main>;
   if (!caseData) return <main className="page"><div className="card center error">{message || 'Không có dữ liệu hồ sơ.'}</div></main>;
 
   const needsFollow = !identity?.oaUid;
