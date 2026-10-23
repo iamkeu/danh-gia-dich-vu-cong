@@ -1,4 +1,5 @@
 import { FormEvent, useEffect, useState } from 'react';
+import { getRouteParams } from 'zmp-sdk';
 import { confirmCaseReceipt, getCaseByToken, CaseData, submitRating } from './services/publicServiceApi';
 import { readCitizenIdentity, requestFollowOA, CitizenIdentity } from './services/zaloIdentity';
 
@@ -22,15 +23,34 @@ export default function App() {
   const [isError, setIsError] = useState(false);
 
   useEffect(() => {
-    const queryToken = new URLSearchParams(window.location.search).get('token') || '';
+    // Zalo may keep Mini App entry parameters in its route context rather than
+    // exposing them through window.location.search. Keep the URL fallback for
+    // browser preview and direct links outside Zalo.
+    let routeToken = '';
+    try {
+      routeToken = String(getRouteParams().token || '');
+    } catch {
+      routeToken = '';
+    }
+    const queryToken = routeToken || new URLSearchParams(window.location.search).get('token') || '';
     setToken(queryToken);
     if (!queryToken) {
       setLoading(false);
       return;
     }
-    Promise.all([getCaseByToken(queryToken), readCitizenIdentity()])
-      .then(([data, citizen]) => { setCaseData(data); setIdentity(citizen); })
-      .catch((error: unknown) => { setIsError(true); setMessage(error instanceof Error ? error.message : 'Không thể tải hồ sơ.'); })
+    // Loading the case is independent from optional Zalo identity permissions.
+    // A permission/SDK failure must not turn a valid QR hồ sơ into “Load failed”.
+    getCaseByToken(queryToken)
+      .then((data) => {
+        setCaseData(data);
+        return readCitizenIdentity()
+          .then((citizen) => setIdentity(citizen))
+          .catch(() => setIdentity(null));
+      })
+      .catch((error: unknown) => {
+        setIsError(true);
+        setMessage(error instanceof Error ? error.message : 'Không thể tải hồ sơ.');
+      })
       .finally(() => setLoading(false));
   }, []);
 
