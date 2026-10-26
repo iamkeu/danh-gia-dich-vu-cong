@@ -1,5 +1,5 @@
 import { FormEvent, useEffect, useState } from 'react';
-import { getRouteParams, openDocument, openWebview } from 'zmp-sdk/apis';
+import { getRouteParams } from 'zmp-sdk';
 import { confirmAndSubmitFeedback, getCaseByToken, CaseData } from './services/publicServiceApi';
 import { readCitizenIdentity, requestFollowOA, CitizenIdentity } from './services/zaloIdentity';
 
@@ -87,10 +87,16 @@ export default function App() {
     const url = caseData?.pdfUrl;
     if (!url) return showError('Hồ sơ chưa có giấy hẹn PDF.');
     try {
-      await openDocument({ url, title: `Giấy hẹn ${caseData.case_code}`, share: false, download: true, edit: false });
+      const sdk = (window as Window & { ZaloMiniAppSDK?: { openDocument?: Function; openWebview?: Function }; zmp?: { openDocument?: Function; openWebview?: Function } }).ZaloMiniAppSDK
+        || (window as Window & { zmp?: { openDocument?: Function; openWebview?: Function } }).zmp;
+      if (!sdk?.openDocument) throw new Error('PDF_SDK_UNAVAILABLE');
+      await sdk.openDocument({ url, title: `Giấy hẹn ${caseData.case_code}`, share: false, download: true, edit: false });
     } catch {
       try {
-        await openWebview({ url, config: { style: 'normal', leftButton: 'back' } });
+        const sdk = (window as Window & { ZaloMiniAppSDK?: { openWebview?: Function }; zmp?: { openWebview?: Function } }).ZaloMiniAppSDK
+          || (window as Window & { zmp?: { openWebview?: Function } }).zmp;
+        if (!sdk?.openWebview) throw new Error('PDF_WEBVIEW_SDK_UNAVAILABLE');
+        await sdk.openWebview({ url, config: { style: 'normal', leftButton: 'back' } });
       } catch {
         window.open(url, '_blank', 'noopener,noreferrer');
         setMessage('Đã yêu cầu mở giấy hẹn. Nếu chưa thấy tài liệu, vui lòng cho phép mở cửa sổ mới hoặc thử lại.');
