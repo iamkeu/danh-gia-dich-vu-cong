@@ -16,7 +16,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     if (!oaAccountId) { const { data: activeOa } = await db.from('zalo_oa_accounts').select('id').eq('is_active', true).maybeSingle(); oaAccountId = activeOa?.id || null; }
     const { data: link, error } = await db.from('service_case_links').upsert({ case_id: params.id, oa_account_id: oaAccountId, oa_uid_hash: hashOpaqueValue(body.oaUid), oa_uid_ciphertext: encryptToken(body.oaUid), link_method: body.method, linked_by: account.id }, { onConflict: 'case_id' }).select('id,case_id,oa_account_id,link_method,linked_at').single();
     if (error) throw error;
-    await db.from('service_cases').update({ status: 'linked', updated_at: new Date().toISOString() }).eq('id', params.id);
+    await db.from('service_cases').update({ status: 'linked', updated_at: new Date().toISOString() }).eq('id', params.id).neq('status', 'rated');
     await db.from('service_case_audit_logs').insert({ case_id: params.id, actor_account_id: account.id, action: 'case.oa_linked', metadata: { method: body.method, oaAccountId: body.oaAccountId ?? null } });
     return NextResponse.json({ data: link });
   } catch (error) {

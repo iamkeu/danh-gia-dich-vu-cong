@@ -5,10 +5,11 @@ import { uploadFile, sendFile, sendRatingInvitation } from '@/lib/zalo/client';
 
 const bucket = () => process.env.SUPABASE_STORAGE_BUCKET || 'danh-gia-dich-vu-cong-files';
 
-export async function sendCase(caseId: string, actorId: string, onlyPart?: 'appointment_file' | 'rating_invitation') {
+export async function sendCase(caseId: string, actorId: string, onlyPart?: 'appointment_file' | 'rating_invitation', actorRole?: string) {
   const db = createSupabaseAdminClient();
   const { data: item, error } = await db.from('service_cases').select('id,case_code,status,pdf_storage_path,created_by').eq('id', caseId).single();
   if (error || !item) throw new Error('CASE_NOT_FOUND');
+  if (actorRole === 'operator' && item.created_by !== actorId) throw new Error('FORBIDDEN');
   const { data: link } = await db.from('service_case_links').select('oa_account_id,oa_uid_ciphertext').eq('case_id', caseId).single();
   if (!link?.oa_account_id || !link.oa_uid_ciphertext) throw new Error('CASE_NOT_LINKED');
   const { data: oa } = await db.from('zalo_oa_accounts').select('id').eq('id', link.oa_account_id).eq('is_active', true).single();
@@ -40,7 +41,17 @@ export async function sendCase(caseId: string, actorId: string, onlyPart?: 'appo
         continue;
       }
 
-      await db.from('service_notification_attempts').upsert({ case_id: caseId, part, idempotency_key: key, status: 'processing', updated_at: new Date().toISOString() }, { onConflict: 'case_id,part,idempotency_key' });
+      const claimedAt = new Date().toISOString();
+      const claim = await db.from('service_notification_attempts').insert({ case_id: caseId, part, idempotency_key: key, status: 'processing', updated_at: claimedAt });
+      if (claim.error?.code === '23505') {
+        const { data: currentAttempt } = await db.from('service_notification_attempts').select('status,updated_at').eq('case_id', caseId).eq('part', part).eq('idempotency_key', key).maybeSingle();
+        if (currentAttempt?.status === 'sent') continue;
+        if (currentAttempt?.status === 'processing' && currentAttempt.updated_at && Date.now() - new Date(currentAttempt.updated_at).getTime() < 5 * 60 * 1000) continue;
+        const { error: reclaimError } = await db.from('service_notification_attempts').update({ status: 'processing', updated_at: claimedAt }).eq('case_id', caseId).eq('part', part).eq('idempotency_key', key).eq('status', 'failed');
+        if (reclaimError) throw reclaimError;
+      } else if (claim.error) {
+        throw claim.error;
+      }
       let messageId = '';
       if (part === 'appointment_file') {
         if (!item.pdf_storage_path) throw new Error('PDF_NOT_UPLOADED');
@@ -51,7 +62,6 @@ export async function sendCase(caseId: string, actorId: string, onlyPart?: 'appo
         const sent = await sendFile(oa.id, uid, uploaded.data.token);
         messageId = String(sent.data?.message_id || sent.message_id || '');
       } else {
-        await db.from('service_case_tokens').delete().eq('case_id', caseId);
         const tokenInsert = await db.from('service_case_tokens').insert({ case_id: caseId, token_hash: tokenHash, expires_at: new Date(Date.now() + 7 * 86400000).toISOString() });
         if (tokenInsert.error) throw tokenInsert.error;
         const sent = await sendRatingInvitation(oa.id, uid, miniAppUrl);
@@ -67,7 +77,8 @@ export async function sendCase(caseId: string, actorId: string, onlyPart?: 'appo
   const latest = new Map((attempts || []).map(a => [a.part, a.status]));
   const notificationStatus = latest.get('appointment_file') === 'sent' && latest.get('rating_invitation') === 'sent' ? 'sent' : latest.get('appointment_file') === 'failed' && latest.get('rating_invitation') === 'failed' ? 'draft' : 'linked';
   const status = item.status === 'rated' ? 'rated' : notificationStatus;
-  await db.from('service_cases').update({ status, sent_at: status === 'sent' ? new Date().toISOString() : item.status === 'rated' ? undefined : null, updated_at: new Date().toISOString() }).eq('id', caseId);
+  const update = db.from('service_cases').update({ status, sent_at: status === 'sent' ? new Date().toISOString() : item.status === 'rated' ? undefined : null, updated_at: new Date().toISOString() }).eq('id', caseId).neq('status', 'rated');
+  if (item.status !== 'rated') await update;
   await db.from('service_case_audit_logs').insert({ case_id: caseId, actor_account_id: actorId, action: 'case.notifications.processed', metadata: { onlyPart: onlyPart || null, status } });
   const failedParts = (attempts || []).filter((attempt) => attempt.status === 'failed');
   return { status, miniAppUrl, attempts: attempts || [], failedParts };

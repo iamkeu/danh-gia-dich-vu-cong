@@ -16,8 +16,6 @@ export async function POST(_request: Request, { params }: { params: { id: string
     if (account.role === 'operator' && serviceCase.created_by !== account.id) return NextResponse.json({ error: { code: 'FORBIDDEN', message: 'Bạn không có quyền xem hồ sơ này.' } }, { status: 403 });
 
     const token = randomBytes(32).toString('base64url');
-    const { error: deleteError } = await db.from('service_case_tokens').delete().eq('case_id', params.id);
-    if (deleteError) throw deleteError;
     const { error: tokenError } = await db.from('service_case_tokens').insert({ case_id: params.id, token_hash: hashOpaqueValue(token), expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() });
     if (tokenError) throw tokenError;
     await db.from('service_case_audit_logs').insert({ case_id: params.id, actor_account_id: account.id, action: 'case.qr_regenerated', metadata: { caseCode: serviceCase.case_code } });
