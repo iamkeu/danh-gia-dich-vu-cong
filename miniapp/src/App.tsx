@@ -1,5 +1,5 @@
 import { FormEvent, useEffect, useState } from 'react';
-import { getRouteParams } from 'zmp-sdk';
+import { getRouteParams, openDocument, openWebview } from 'zmp-sdk/apis';
 import { confirmAndSubmitFeedback, getCaseByToken, CaseData } from './services/publicServiceApi';
 import { readCitizenIdentity, requestFollowOA, CitizenIdentity } from './services/zaloIdentity';
 
@@ -83,6 +83,20 @@ export default function App() {
   }
 
   function showError(text: string) { setIsError(true); setMessage(text); }
+  async function openAppointmentPdf() {
+    const url = caseData?.pdfUrl;
+    if (!url) return showError('Hồ sơ chưa có giấy hẹn PDF.');
+    try {
+      await openDocument({ url, title: `Giấy hẹn ${caseData.case_code}`, share: false, download: true, edit: false });
+    } catch {
+      try {
+        await openWebview({ url, config: { style: 'normal', leftButton: 'back' } });
+      } catch {
+        window.open(url, '_blank', 'noopener,noreferrer');
+        setMessage('Đã yêu cầu mở giấy hẹn. Nếu chưa thấy tài liệu, vui lòng cho phép mở cửa sổ mới hoặc thử lại.');
+      }
+    }
+  }
 
   if (loading && !caseData) return <main className="page"><div className="card center">Đang tải thông tin hồ sơ…</div></main>;
   if (!token) return <main className="page"><div className="container">
@@ -100,7 +114,7 @@ export default function App() {
       <div className="eyebrow">GIẤY HẸN TRẢ KẾT QUẢ</div>
       <div className="case-title"><div><h2>{caseData.case_code}</h2><p>{caseData.procedure_name}</p></div><span className="badge">Đã phát hành</span></div>
       <dl className="details"><div><dt>Đơn vị tiếp nhận</dt><dd>{caseData.department_name || 'Chưa cập nhật'}</dd></div><div><dt>Cán bộ phụ trách</dt><dd>{caseData.officer_name || 'Chưa cập nhật'}</dd></div><div><dt>Ngày hẹn trả</dt><dd>{formatDate(caseData.appointment_date)}</dd></div></dl>
-      {caseData.pdfUrl && <a className="pdf-link" href={caseData.pdfUrl} target="_blank" rel="noreferrer">▣ &nbsp; Mở giấy hẹn PDF <b>↗</b></a>}
+      {caseData.pdfUrl && <button className="pdf-link" type="button" onClick={openAppointmentPdf}>▣ &nbsp; Mở giấy hẹn PDF <b>↗</b></button>}
     </section>
 
     {needsFollow && <section className="card action-card"><div className="step">BƯỚC 1</div><h2>Quan tâm OA để nhận thông báo</h2><p className="muted">Để nhận giấy hẹn và thông báo kết quả hồ sơ qua Zalo, Anh/Chị vui lòng quan tâm Official Account của đơn vị.</p><button className="submit" disabled={working} onClick={handleFollow}>{working ? 'Đang mở xác nhận…' : 'Quan tâm OA để nhận thông báo'}</button></section>}

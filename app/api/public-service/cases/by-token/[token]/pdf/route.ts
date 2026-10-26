@@ -44,6 +44,8 @@ export async function GET(request: Request, { params }: { params: { token: strin
     headers: {
       'Content-Type': 'application/pdf',
       'Content-Disposition': `inline; filename="${filename}"`,
+      'Content-Length': String(file.size),
+      'X-Content-Type-Options': 'nosniff',
       'Cache-Control': 'private, no-store, max-age=0',
       'Access-Control-Allow-Origin': '*',
       'Access-Control-Allow-Methods': 'GET, OPTIONS',
