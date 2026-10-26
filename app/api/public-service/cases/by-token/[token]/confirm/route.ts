@@ -8,6 +8,9 @@ import { miniAppJson, miniAppOptions } from '@/lib/public-service/cors';
 const schema = z.object({
   oaUid: z.string().trim().min(1).max(200),
   oaAccountId: z.string().uuid().nullable().optional(),
+  stars: z.number().int().min(1).max(5),
+  comment: z.string().max(1000).optional().default(''),
+  commentConsent: z.boolean().default(false),
 });
 
 export function OPTIONS() {
@@ -20,6 +23,10 @@ export async function POST(request: NextRequest, { params }: { params: { token: 
       return miniAppJson({ error: { code: 'INVALID_TOKEN', message: 'Liên kết hồ sơ không hợp lệ' } }, { status: 400 });
     }
     const body = schema.parse(await request.json());
+    const comment = body.comment.trim();
+    if (comment && !body.commentConsent) {
+      return miniAppJson({ error: { code: 'COMMENT_CONSENT_REQUIRED', message: 'Vui lòng đồng ý trước khi gửi góp ý' } }, { status: 400 });
+    }
     const db = createSupabaseAdminClient();
     const tokenHash = hashOpaqueValue(params.token);
     const { data: token } = await db.from('service_case_tokens').select('case_id,expires_at,consumed_at').eq('token_hash', tokenHash).single();
@@ -50,9 +57,21 @@ export async function POST(request: NextRequest, { params }: { params: { token: 
     }, { onConflict: 'case_id' }).select('id,case_id,link_method,confirmation_method,confirmed_at,linked_at').single();
     if (error) throw error;
 
-    await db.from('service_cases').update({ status: 'linked', updated_at: new Date().toISOString() }).eq('id', token.case_id);
-    await db.from('service_case_audit_logs').insert({ case_id: token.case_id, actor_account_id: null, action: 'case.citizen_confirmed_result', metadata: { method: 'citizen_qr', oaAccountId } });
-    return miniAppJson({ data: { ...link, message: 'Đã xác nhận nhận kết quả hồ sơ qua Zalo' } });
+    const { data: rating, error: ratingError } = await db.from('service_ratings').insert({
+      case_id: token.case_id,
+      oa_uid_hash: oaUidHash,
+      stars: body.stars,
+      comment: comment || null,
+      comment_consent_at: comment ? new Date().toISOString() : null,
+    }).select('id,stars,submitted_at').single();
+    if (ratingError) {
+      if (ratingError.code === '23505') return miniAppJson({ error: { code: 'ALREADY_RATED', message: 'Hồ sơ này đã được đánh giá' } }, { status: 409 });
+      throw ratingError;
+    }
+
+    await db.from('service_cases').update({ status: 'rated', updated_at: new Date().toISOString() }).eq('id', token.case_id);
+    await db.from('service_case_audit_logs').insert({ case_id: token.case_id, actor_account_id: null, action: 'case.citizen_confirmed_and_rated', metadata: { method: 'citizen_qr', oaAccountId, stars: body.stars, hasComment: Boolean(comment) } });
+    return miniAppJson({ data: { ...link, rating, message: 'Đã xác nhận và gửi phản hồi thành công' } }, { status: 201 });
   } catch (error) {
     if (error instanceof z.ZodError) return miniAppJson({ error: { code: 'VALIDATION_ERROR', message: error.issues[0]?.message || 'Dữ liệu không hợp lệ' } }, { status: 400 });
     return miniAppJson({ error: { code: 'INTERNAL_ERROR', message: 'Không thể xác nhận hồ sơ' } }, { status: 500 });

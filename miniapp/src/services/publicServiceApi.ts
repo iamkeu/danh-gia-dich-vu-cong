@@ -35,18 +35,10 @@ export function getCaseByToken(token: string): Promise<CaseData> {
   return request(`${API_BASE}/api/public-service/cases/by-token/${encodeURIComponent(token)}`).then(readData<CaseData>);
 }
 
-export function confirmCaseReceipt(token: string, oaUid: string): Promise<{ message: string }> {
-  return request(`${API_BASE}/api/public-service/cases/by-token/${encodeURIComponent(token)}/confirm`, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ oaUid }),
-  }).then(readData<{ message: string }>);
-}
-
-export function submitRating(input: { token: string; oaUid: string; stars: number; comment: string; commentConsent: boolean }): Promise<RatingResult> {
-  return request(`${API_BASE}/api/public-service/ratings`, {
+export function confirmAndSubmitFeedback(input: { token: string; oaUid: string; stars: number; comment: string; commentConsent: boolean }): Promise<{ message: string }> {
+  return request(`${API_BASE}/api/public-service/cases/by-token/${encodeURIComponent(input.token)}/confirm`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify(input),
-  }).then(readData<RatingResult>);
+  }).then(readData<{ message: string }>);
 }

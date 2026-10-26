@@ -126,15 +126,15 @@ export default function MiniAppPage() {
 
     setBusy(true);
     try {
-      const response = await fetch('/api/public-service/ratings', {
+      const response = await fetch(`/api/public-service/cases/by-token/${encodeURIComponent(token)}/confirm`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ token, oaUid, stars, comment: comment.trim(), commentConsent: consent }),
+        body: JSON.stringify({ oaUid, stars, comment: comment.trim(), commentConsent: consent }),
       });
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.error?.message || 'Không thể ghi nhận đánh giá.');
       setSubmitted(true);
-      setNotice('Đánh giá của Anh/Chị đã được ghi nhận. Cảm ơn Anh/Chị đã phản hồi.');
+      setNotice('Đã xác nhận và gửi phản hồi thành công. Cảm ơn Anh/Chị.');
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'Không thể ghi nhận đánh giá.');
     } finally {
@@ -175,9 +175,9 @@ export default function MiniAppPage() {
               <section className="card completed-card"><div className="completed-icon">✓</div><h2>Đã ghi nhận phản hồi</h2><p>Ý kiến của Anh/Chị giúp đơn vị cải thiện chất lượng phục vụ.</p></section>
             ) : (
               <form className="card rating-card" onSubmit={submitRating}>
-                <div className="card-label">PHẢN HỒI CỦA CÔNG DÂN</div>
-                <h2>Trải nghiệm của Anh/Chị thế nào?</h2>
-                <p className="helper">Chọn số sao phù hợp nhất với trải nghiệm vừa qua.</p>
+                <div className="card-label">BƯỚC 2 · XÁC NHẬN & PHẢN HỒI</div>
+                <h2>Xác nhận và gửi phản hồi</h2>
+                <p className="helper">Chọn số sao và nhập góp ý (nếu có). Chỉ cần một lần bấm, hệ thống sẽ đồng thời xác nhận nhận kết quả và ghi nhận đánh giá.</p>
                 <div className="stars" role="radiogroup" aria-label="Mức độ hài lòng">
                   {[1, 2, 3, 4, 5].map((value) => <button key={value} type="button" role="radio" aria-checked={stars === value} aria-label={`${value} sao`} className={value <= stars ? 'star active' : 'star'} onClick={() => setStars(value)}>★</button>)}
                 </div>
@@ -187,7 +187,7 @@ export default function MiniAppPage() {
                 <label className="consent"><input type="checkbox" checked={consent} onChange={(event) => setConsent(event.target.checked)} /><span>Tôi đồng ý cho phép đơn vị sử dụng góp ý này để cải thiện chất lượng phục vụ.</span></label>
                 {testMode && <div className="test-field"><label className="field-label" htmlFor="oaUid">OA UID test</label><input id="oaUid" value={oaUid} onChange={(event) => setOaUid(event.target.value)} placeholder="Chỉ dùng khi test=1" /></div>}
                 {!testMode && <p className={oaUid ? 'identity ready' : 'identity pending'}>{oaUid ? '✓ Đã nhận diện theo Official Account' : sdkAvailable ? 'Đang chờ idByOA từ Zalo…' : 'Mở trong Zalo để Mini App nhận diện tài khoản'}</p>}
-                <button className="submit-button" type="submit" disabled={busy || !stars || (!oaUid && !testMode)}>{busy ? 'Đang xử lý…' : 'Gửi đánh giá'}</button>
+                <button className="submit-button" type="submit" disabled={busy || !stars || (!oaUid && !testMode)}>{busy ? 'Đang xác nhận và gửi…' : 'Xác nhận và Gửi phản hồi'}</button>
                 <p className="privacy">Thông tin định danh chỉ được dùng để xác định đúng hồ sơ và chống gửi trùng.</p>
               </form>
             )}
