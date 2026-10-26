@@ -14,7 +14,11 @@ export async function sendCase(caseId: string, actorId: string, onlyPart?: 'appo
   const { data: oa } = await db.from('zalo_oa_accounts').select('id').eq('id', link.oa_account_id).eq('is_active', true).single();
   if (!oa) throw new Error('OA_NOT_CONNECTED');
   const uid = decryptToken(link.oa_uid_ciphertext);
-  const parts: Array<'appointment_file' | 'rating_invitation'> = onlyPart ? [onlyPart] : ['appointment_file', 'rating_invitation'];
+  const parts: Array<'appointment_file' | 'rating_invitation'> = onlyPart
+    ? [onlyPart]
+    : item.status === 'rated'
+      ? ['appointment_file']
+      : ['appointment_file', 'rating_invitation'];
   const token = randomBytes(32).toString('base64url');
   const tokenHash = createHash('sha256').update(token).digest('hex');
   const miniAppUrl = process.env.ZALO_MINI_APP_ID
@@ -22,8 +26,21 @@ export async function sendCase(caseId: string, actorId: string, onlyPart?: 'appo
     : `${process.env.NEXT_PUBLIC_APP_URL || ''}/miniapp?token=${encodeURIComponent(token)}`;
   for (const part of parts) {
     const key = `${caseId}:${part}`;
-    await db.from('service_notification_attempts').upsert({ case_id: caseId, part, idempotency_key: key, status: 'processing', updated_at: new Date().toISOString() }, { onConflict: 'case_id,part,idempotency_key' });
     try {
+      const { data: previousAttempt } = await db.from('service_notification_attempts')
+        .select('status')
+        .eq('case_id', caseId)
+        .eq('part', part)
+        .eq('idempotency_key', key)
+        .maybeSingle();
+      if (previousAttempt?.status === 'sent') continue;
+
+      if (part === 'rating_invitation' && item.status === 'rated') {
+        await db.from('service_notification_attempts').upsert({ case_id: caseId, part, idempotency_key: key, status: 'skipped', error_code: 'RATING_ALREADY_SUBMITTED', error_message: 'Hồ sơ đã được đánh giá; không cần gửi lời mời đánh giá.', updated_at: new Date().toISOString() }, { onConflict: 'case_id,part,idempotency_key' });
+        continue;
+      }
+
+      await db.from('service_notification_attempts').upsert({ case_id: caseId, part, idempotency_key: key, status: 'processing', updated_at: new Date().toISOString() }, { onConflict: 'case_id,part,idempotency_key' });
       let messageId = '';
       if (part === 'appointment_file') {
         if (!item.pdf_storage_path) throw new Error('PDF_NOT_UPLOADED');
@@ -48,8 +65,9 @@ export async function sendCase(caseId: string, actorId: string, onlyPart?: 'appo
   }
   const { data: attempts } = await db.from('service_notification_attempts').select('part,status,retry_count,error_code,error_message,message_id,updated_at').eq('case_id', caseId).order('created_at', { ascending: false }).limit(20);
   const latest = new Map((attempts || []).map(a => [a.part, a.status]));
-  const status = latest.get('appointment_file') === 'sent' && latest.get('rating_invitation') === 'sent' ? 'sent' : latest.get('appointment_file') === 'failed' && latest.get('rating_invitation') === 'failed' ? 'draft' : 'linked';
-  await db.from('service_cases').update({ status, sent_at: status === 'sent' ? new Date().toISOString() : null, updated_at: new Date().toISOString() }).eq('id', caseId);
+  const notificationStatus = latest.get('appointment_file') === 'sent' && latest.get('rating_invitation') === 'sent' ? 'sent' : latest.get('appointment_file') === 'failed' && latest.get('rating_invitation') === 'failed' ? 'draft' : 'linked';
+  const status = item.status === 'rated' ? 'rated' : notificationStatus;
+  await db.from('service_cases').update({ status, sent_at: status === 'sent' ? new Date().toISOString() : item.status === 'rated' ? undefined : null, updated_at: new Date().toISOString() }).eq('id', caseId);
   await db.from('service_case_audit_logs').insert({ case_id: caseId, actor_account_id: actorId, action: 'case.notifications.processed', metadata: { onlyPart: onlyPart || null, status } });
   const failedParts = (attempts || []).filter((attempt) => attempt.status === 'failed');
   return { status, miniAppUrl, attempts: attempts || [], failedParts };
