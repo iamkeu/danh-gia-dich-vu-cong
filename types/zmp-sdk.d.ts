@@ -1,4 +1,5 @@
 declare module 'zmp-sdk' {
+  export function getRouteParams(): Record<string, string>;
   export function getUserID(options?: Record<string, unknown>): Promise<string>;
   export function getUserInfo(options?: Record<string, unknown>): Promise<{
     userInfo?: {

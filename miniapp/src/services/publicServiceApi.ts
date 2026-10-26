@@ -25,12 +25,18 @@ async function readData<T>(response: Response): Promise<T> {
   return payload.data as T;
 }
 
+function request(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+  return fetch(input, { ...init, cache: 'no-store' }).catch(() => {
+    throw new Error('Không thể kết nối máy chủ. Vui lòng kiểm tra kết nối mạng và thử lại.');
+  });
+}
+
 export function getCaseByToken(token: string): Promise<CaseData> {
-  return fetch(`${API_BASE}/api/public-service/cases/by-token/${encodeURIComponent(token)}`, { cache: 'no-store' }).then(readData<CaseData>);
+  return request(`${API_BASE}/api/public-service/cases/by-token/${encodeURIComponent(token)}`).then(readData<CaseData>);
 }
 
 export function confirmCaseReceipt(token: string, oaUid: string): Promise<{ message: string }> {
-  return fetch(`${API_BASE}/api/public-service/cases/by-token/${encodeURIComponent(token)}/confirm`, {
+  return request(`${API_BASE}/api/public-service/cases/by-token/${encodeURIComponent(token)}/confirm`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ oaUid }),
@@ -38,7 +44,7 @@ export function confirmCaseReceipt(token: string, oaUid: string): Promise<{ mess
 }
 
 export function submitRating(input: { token: string; oaUid: string; stars: number; comment: string; commentConsent: boolean }): Promise<RatingResult> {
-  return fetch(`${API_BASE}/api/public-service/ratings`, {
+  return request(`${API_BASE}/api/public-service/ratings`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify(input),
