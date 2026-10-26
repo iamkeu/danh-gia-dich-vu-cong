@@ -6,7 +6,7 @@ export function OPTIONS() {
   return miniAppOptions();
 }
 
-export async function GET(_request: Request, { params }: { params: { token: string } }) {
+export async function GET(request: Request, { params }: { params: { token: string } }) {
   if (!params.token || params.token.length < 20) return miniAppJson({ error: { code: 'INVALID_TOKEN', message: 'Liên kết không hợp lệ' } }, { status: 400 });
   const db = createSupabaseAdminClient();
   const { data: token, error: tokenError } = await db.from('service_case_tokens').select('case_id,expires_at,consumed_at').eq('token_hash', hashOpaqueValue(params.token)).single();
@@ -15,7 +15,8 @@ export async function GET(_request: Request, { params }: { params: { token: stri
   if (error || !serviceCase) return miniAppJson({ error: { code: 'CASE_NOT_FOUND', message: 'Không tìm thấy hồ sơ' } }, { status: 404 });
   const { data: link } = await db.from('service_case_links').select('id,confirmed_at,confirmation_method').eq('case_id', serviceCase.id).maybeSingle();
   const { data: rating } = await db.from('service_ratings').select('id,stars,submitted_at').eq('case_id', serviceCase.id).maybeSingle();
-  let pdfUrl: string | null = null;
-  if (serviceCase.pdf_storage_path) { const signed = await db.storage.from(process.env.SUPABASE_STORAGE_BUCKET || 'danh-gia-dich-vu-cong-files').createSignedUrl(serviceCase.pdf_storage_path, 15 * 60); pdfUrl = signed.data?.signedUrl || null; }
+  const pdfUrl = serviceCase.pdf_storage_path
+    ? new URL(`/api/public-service/cases/by-token/${encodeURIComponent(params.token)}/pdf`, request.url).toString()
+    : null;
   return miniAppJson({ data: { ...serviceCase, pdf_storage_path: undefined, pdfUrl, alreadyRated: Boolean(rating), isConfirmed: Boolean(link?.confirmed_at), confirmationMethod: link?.confirmation_method || null } });
 }

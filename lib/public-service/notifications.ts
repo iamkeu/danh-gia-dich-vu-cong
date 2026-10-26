@@ -46,10 +46,11 @@ export async function sendCase(caseId: string, actorId: string, onlyPart?: 'appo
       await db.from('service_notification_attempts').update({ status: 'failed', retry_count: 1, error_code: message.split(':')[0], error_message: message, updated_at: new Date().toISOString() }).eq('case_id', caseId).eq('part', part).eq('idempotency_key', key);
     }
   }
-  const { data: attempts } = await db.from('service_notification_attempts').select('part,status').eq('case_id', caseId).order('created_at', { ascending: false }).limit(20);
+  const { data: attempts } = await db.from('service_notification_attempts').select('part,status,retry_count,error_code,error_message,message_id,updated_at').eq('case_id', caseId).order('created_at', { ascending: false }).limit(20);
   const latest = new Map((attempts || []).map(a => [a.part, a.status]));
   const status = latest.get('appointment_file') === 'sent' && latest.get('rating_invitation') === 'sent' ? 'sent' : latest.get('appointment_file') === 'failed' && latest.get('rating_invitation') === 'failed' ? 'draft' : 'linked';
   await db.from('service_cases').update({ status, sent_at: status === 'sent' ? new Date().toISOString() : null, updated_at: new Date().toISOString() }).eq('id', caseId);
   await db.from('service_case_audit_logs').insert({ case_id: caseId, actor_account_id: actorId, action: 'case.notifications.processed', metadata: { onlyPart: onlyPart || null, status } });
-  return { status, miniAppUrl, attempts: attempts || [] };
+  const failedParts = (attempts || []).filter((attempt) => attempt.status === 'failed');
+  return { status, miniAppUrl, attempts: attempts || [], failedParts };
 }
