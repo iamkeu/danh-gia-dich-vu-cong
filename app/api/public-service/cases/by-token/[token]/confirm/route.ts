@@ -45,6 +45,11 @@ export async function POST(request: NextRequest, { params }: { params: { token: 
       const { data: activeOa } = await db.from('zalo_oa_accounts').select('id').eq('is_active', true).maybeSingle();
       oaAccountId = activeOa?.id || null;
     }
+    const { data: existingRating } = await db.from('service_ratings').select('id,stars,submitted_at').eq('case_id', token.case_id).maybeSingle();
+    if (existingRating) {
+      await db.from('service_cases').update({ status: 'rated', updated_at: new Date().toISOString() }).eq('id', token.case_id);
+      return miniAppJson({ data: { rating: existingRating, message: 'Hồ sơ này đã được xác nhận và gửi phản hồi trước đó' } }, { status: 200 });
+    }
     const { data: link, error } = await db.from('service_case_links').upsert({
       case_id: token.case_id,
       oa_account_id: oaAccountId,
@@ -55,7 +60,10 @@ export async function POST(request: NextRequest, { params }: { params: { token: 
       confirmed_at: new Date().toISOString(),
       linked_by: null,
     }, { onConflict: 'case_id' }).select('id,case_id,link_method,confirmation_method,confirmed_at,linked_at').single();
-    if (error) throw error;
+    if (error) {
+      console.error('citizen_confirm_link_save_failed', { caseId: token.case_id, code: error.code, message: error.message });
+      return miniAppJson({ error: { code: 'LINK_SAVE_FAILED', message: 'Chưa thể ghi nhận liên kết hồ sơ. Vui lòng thử lại.' } }, { status: 503 });
+    }
 
     const { data: rating, error: ratingError } = await db.from('service_ratings').insert({
       case_id: token.case_id,
@@ -66,14 +74,17 @@ export async function POST(request: NextRequest, { params }: { params: { token: 
     }).select('id,stars,submitted_at').single();
     if (ratingError) {
       if (ratingError.code === '23505') return miniAppJson({ error: { code: 'ALREADY_RATED', message: 'Hồ sơ này đã được đánh giá' } }, { status: 409 });
-      throw ratingError;
+      console.error('citizen_confirm_rating_save_failed', { caseId: token.case_id, code: ratingError.code, message: ratingError.message });
+      return miniAppJson({ error: { code: 'RATING_SAVE_FAILED', message: 'Đã liên kết hồ sơ nhưng chưa ghi được đánh giá. Vui lòng bấm gửi lại.' } }, { status: 503 });
     }
 
-    await db.from('service_cases').update({ status: 'rated', updated_at: new Date().toISOString() }).eq('id', token.case_id);
+    const { error: statusError } = await db.from('service_cases').update({ status: 'rated', updated_at: new Date().toISOString() }).eq('id', token.case_id);
+    if (statusError) console.error('citizen_confirm_status_update_failed', { caseId: token.case_id, code: statusError.code, message: statusError.message });
     await db.from('service_case_audit_logs').insert({ case_id: token.case_id, actor_account_id: null, action: 'case.citizen_confirmed_and_rated', metadata: { method: 'citizen_qr', oaAccountId, stars: body.stars, hasComment: Boolean(comment) } });
     return miniAppJson({ data: { ...link, rating, message: 'Đã xác nhận và gửi phản hồi thành công' } }, { status: 201 });
   } catch (error) {
     if (error instanceof z.ZodError) return miniAppJson({ error: { code: 'VALIDATION_ERROR', message: error.issues[0]?.message || 'Dữ liệu không hợp lệ' } }, { status: 400 });
+    console.error('citizen_confirm_unhandled_error', error);
     return miniAppJson({ error: { code: 'INTERNAL_ERROR', message: 'Không thể xác nhận hồ sơ' } }, { status: 500 });
   }
 }
