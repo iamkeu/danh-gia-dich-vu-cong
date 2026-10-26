@@ -116,12 +116,11 @@ https://zalo.me/s/{MINI_APP_ID}/?token=...
 2. Gọi `getUserID()` để lấy App UID phụ trợ.
 3. Gọi `getUserInfo()` và lấy `userInfo.idByOA`.
 4. Nếu chưa có `idByOA`, gọi `followOA({ id: VITE_ZALO_OA_ID })` sau khi công dân bấm nút quan tâm OA.
-5. Gọi lại `getUserInfo()` và hiển thị nút “Xác nhận nhận kết quả hồ sơ”.
-6. Gửi `token` và `oaUid` đến API xác nhận để liên kết đúng hồ sơ.
-7. Gọi API lấy hồ sơ bằng token và hiển thị giấy hẹn/PDF.
-8. Công dân chọn 1–5 sao, nhập góp ý tùy chọn.
-9. Nếu có góp ý, bắt buộc tick checkbox đồng ý.
-10. Gửi `token`, `oaUid`, `stars`, `comment`, `commentConsent` về backend.
+5. Gọi lại `getUserInfo()` và hiển thị phần “Xác nhận & phản hồi”.
+6. Gọi API lấy hồ sơ bằng token và hiển thị giấy hẹn/PDF.
+7. Công dân chọn 1–5 sao, nhập góp ý tùy chọn.
+8. Nếu có góp ý, bắt buộc tick checkbox đồng ý.
+9. Chỉ một nút “Xác nhận và Gửi phản hồi” gửi `token`, `oaUid`, `stars`, `comment`, `commentConsent` đến endpoint xác nhận hợp nhất; backend đồng thời liên kết Zalo, ghi đánh giá và cập nhật hồ sơ thành `rated`.
 
 ## Nguồn chính thức
 
