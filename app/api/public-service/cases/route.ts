@@ -27,7 +27,7 @@ export async function GET() {
     const { data, error } = await query;
     if (error) throw error;
     const rows = await Promise.all((data || []).map(async item => {
-      const { data: attempts } = await db.from('service_notification_attempts').select('part,status,retry_count,error_code,error_message,message_id,updated_at').eq('case_id', item.id).order('updated_at', { ascending: false }).limit(10);
+      const { data: attempts } = await db.from('service_notification_attempts').select('part,status,retry_count,error_code,error_message,message_id,reconciliation_status,reconciled_at,updated_at').eq('case_id', item.id).order('updated_at', { ascending: false }).limit(10);
       const { data: link } = await db.from('service_case_links').select('confirmed_at,confirmation_method').eq('case_id', item.id).maybeSingle();
       return { ...item, isConfirmed: Boolean(link?.confirmed_at), confirmationMethod: link?.confirmation_method || null, notificationAttempts: attempts || [] };
     }));

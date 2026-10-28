@@ -14,13 +14,24 @@ export async function POST(req: NextRequest) {
   let body: any;
   try { body = JSON.parse(raw); } catch { return NextResponse.json({ error: 'invalid_json' }, { status: 400 }); }
   const signature = req.headers.get('x-zevent-signature') || '';
-  const expected = crypto.createHash('sha256').update(`${process.env.ZALO_APP_ID || ''}${raw}${body.timestamp || ''}${process.env.OA_WEBHOOK_SECRET || ''}`).digest('hex');
-  if (!equalSignature(signature, expected)) return NextResponse.json({ error: 'invalid_signature' }, { status: 401 });
+  const appIds = Array.from(new Set([String(process.env.ZALO_APP_ID || ''), String(body.app_id || '')].filter(Boolean)));
+  const validSignature = appIds.some(appId => {
+    const expected = crypto.createHash('sha256').update(`${appId}${raw}${body.timestamp || ''}${process.env.OA_WEBHOOK_SECRET || ''}`).digest('hex');
+    return equalSignature(signature, expected);
+  });
+  if (!validSignature) return NextResponse.json({ error: 'invalid_signature' }, { status: 401 });
 
   const db = createSupabaseAdminClient();
   const message = body.message || body.data || {};
   const messageId = String(message.msg_id || message.message_id || body.message_id || '');
   const eventName = String(body.event_name || body.event || '');
+  if (messageId) {
+    const { data: attempt } = await db.from('service_notification_attempts').select('id,case_id,message_id').eq('message_id', messageId).maybeSingle();
+    if (attempt?.id) {
+      await db.from('service_notification_attempts').update({ reconciliation_status: 'webhook_received', reconciled_at: new Date().toISOString(), reconciled_message_id: messageId, reconciliation_error: null }).eq('id', attempt.id);
+      await db.from('service_case_audit_logs').insert({ case_id: attempt.case_id, actor_account_id: null, action: 'case.oa_message_webhook_received', metadata: { eventName, messageId } });
+    }
+  }
   if (eventName.includes('feedback') || eventName.includes('rating') || message.rating !== undefined || message.rating_score !== undefined) {
     const stars = Number(message.rating ?? message.rating_score ?? message.stars);
     const comment = String(message.comment ?? message.feedback ?? '').trim();

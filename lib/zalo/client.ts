@@ -55,3 +55,9 @@ export async function sendRatingInvitation(oaId: string, userId: string, miniApp
   const text = `Trung tâm Phục vụ Hành chính công\n\nGiấy hẹn trả kết quả đã được phát hành.\nVui lòng xem giấy hẹn đính kèm và đánh giá chất lượng phục vụ tại:\n${miniAppUrl}`;
   return sendConsultationMessage(oaId, { recipient: { user_id: userId }, message: { text } });
 }
+
+export async function getConversation(oaId: string, userId: string, offset = 0, count = 10) {
+  const token = await getValidAccessToken(oaId);
+  const data = encodeURIComponent(JSON.stringify({ user_id: userId, offset, count }));
+  return call(`https://openapi.zalo.me/v2.0/oa/conversation?data=${data}`, { headers: { access_token: token } });
+}
