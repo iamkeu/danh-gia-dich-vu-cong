@@ -3,7 +3,11 @@ import { getValidAccessToken } from './token-store';
 async function call(url: string, init: RequestInit) {
   const response = await fetch(url, init);
   const body = await response.json();
-  if (!response.ok || body.error) throw new Error(`ZALO_${body.error || response.status}:${body.message || 'API error'}`);
+  if (!response.ok || body.error) {
+    const detail = body.message || body.error_message || body.data?.message || 'API error';
+    const raw = body.data && typeof body.data === 'object' ? `:${JSON.stringify(body.data).slice(0, 500)}` : '';
+    throw new Error(`ZALO_${body.error || response.status}:${detail}${raw}`);
+  }
   return body;
 }
 

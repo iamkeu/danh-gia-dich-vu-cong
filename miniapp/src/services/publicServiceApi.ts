@@ -35,7 +35,7 @@ export function getCaseByToken(token: string): Promise<CaseData> {
   return request(`${API_BASE}/api/public-service/cases/by-token/${encodeURIComponent(token)}`).then(readData<CaseData>);
 }
 
-export function confirmAndSubmitFeedback(input: { token: string; oaUid: string; stars: number; comment: string; commentConsent: boolean }): Promise<{ message: string }> {
+export function confirmAndSubmitFeedback(input: { token: string; oaUid: string; followedOA: boolean; stars: number; comment: string; commentConsent: boolean }): Promise<{ message: string }> {
   return request(`${API_BASE}/api/public-service/cases/by-token/${encodeURIComponent(input.token)}/confirm`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },

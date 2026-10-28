@@ -72,10 +72,10 @@ export default function App() {
     setIsError(false); setMessage('');
     if (!stars) return showError('Vui lòng chọn số sao từ 1 đến 5.');
     if (comment.trim() && !consent) return showError('Vui lòng đồng ý cho phép sử dụng góp ý trước khi gửi.');
-    if (!identity?.oaUid) return showError('Chưa xác định được tài khoản theo OA.');
+    if (!identity?.oaUid || !identity.followedOA) return showError('Vui lòng quan tâm Official Account trước khi gửi phản hồi.');
     setWorking(true);
     try {
-      await confirmAndSubmitFeedback({ token, oaUid: identity.oaUid, stars, comment: comment.trim(), commentConsent: consent });
+      await confirmAndSubmitFeedback({ token, oaUid: identity.oaUid, followedOA: identity.followedOA, stars, comment: comment.trim(), commentConsent: consent });
       setCaseData((previous) => previous ? { ...previous, isConfirmed: true, alreadyRated: true } : previous);
       setSubmitted(true); setMessage('Đã xác nhận và gửi phản hồi thành công. Cảm ơn Anh/Chị.');
     } catch (error: unknown) { showError(error instanceof Error ? error.message : 'Không thể ghi nhận đánh giá.'); }
@@ -109,7 +109,7 @@ export default function App() {
   </div></main>;
   if (!caseData) return <main className="page"><div className="card center error">{message || 'Không có dữ liệu hồ sơ.'}</div></main>;
 
-  const needsFollow = !identity?.oaUid;
+  const needsFollow = !identity?.oaUid || !identity.followedOA;
   return <main className="page"><div className="container">
     <header className="brand"><div className="logo">ĐG</div><div><div className="eyebrow">TRUNG TÂM PHỤC VỤ HÀNH CHÍNH CÔNG</div><h1>Giấy hẹn & phản hồi dịch vụ</h1></div></header>
     {message && <div className={`notice ${isError ? 'notice-error' : 'notice-success'}`}>{message}</div>}

@@ -61,6 +61,7 @@ export default function MiniAppPage() {
   const [token, setToken] = useState('');
   const [caseData, setCaseData] = useState<CaseData | null>(null);
   const [oaUid, setOaUid] = useState('');
+  const [followedOA, setFollowedOA] = useState(false);
   const [appUid, setAppUid] = useState('');
   const [sdkAvailable, setSdkAvailable] = useState(false);
   const [stars, setStars] = useState(0);
@@ -84,6 +85,7 @@ export default function MiniAppPage() {
       if (!identity) return;
       setOaUid(identity.oaUid);
       setAppUid(identity.appUid || '');
+      setFollowedOA(Boolean(identity.followedOA));
       if (!identity.oaUid && !params.get('test')) {
         setNotice('Mini App đã nhận diện tài khoản nhưng chưa có idByOA. Hãy xác thực Mini App với OA và bảo đảm tài khoản đang quan tâm OA.');
       }
@@ -111,7 +113,7 @@ export default function MiniAppPage() {
     event.preventDefault();
     setError('');
     setNotice('');
-    if (!oaUid) {
+    if (!oaUid || (!followedOA && !testMode)) {
       setError(testMode ? 'Nhập OA UID test trước khi gửi.' : 'Chưa nhận được idByOA từ Zalo. Vui lòng xác thực Mini App với OA.');
       return;
     }
@@ -129,7 +131,7 @@ export default function MiniAppPage() {
       const response = await fetch(`/api/public-service/cases/by-token/${encodeURIComponent(token)}/confirm`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ oaUid, stars, comment: comment.trim(), commentConsent: consent }),
+        body: JSON.stringify({ oaUid, followedOA: testMode || followedOA, stars, comment: comment.trim(), commentConsent: consent }),
       });
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.error?.message || 'Không thể ghi nhận đánh giá.');
@@ -186,8 +188,8 @@ export default function MiniAppPage() {
                 <textarea id="comment" value={comment} onChange={(event) => setComment(event.target.value)} maxLength={1000} placeholder="Chia sẻ ngắn gọn để chúng tôi phục vụ tốt hơn…" rows={4} />
                 <label className="consent"><input type="checkbox" checked={consent} onChange={(event) => setConsent(event.target.checked)} /><span>Tôi đồng ý cho phép đơn vị sử dụng góp ý này để cải thiện chất lượng phục vụ.</span></label>
                 {testMode && <div className="test-field"><label className="field-label" htmlFor="oaUid">OA UID test</label><input id="oaUid" value={oaUid} onChange={(event) => setOaUid(event.target.value)} placeholder="Chỉ dùng khi test=1" /></div>}
-                {!testMode && <p className={oaUid ? 'identity ready' : 'identity pending'}>{oaUid ? '✓ Đã nhận diện theo Official Account' : sdkAvailable ? 'Đang chờ idByOA từ Zalo…' : 'Mở trong Zalo để Mini App nhận diện tài khoản'}</p>}
-                <button className="submit-button" type="submit" disabled={busy || !stars || (!oaUid && !testMode)}>{busy ? 'Đang xác nhận và gửi…' : 'Xác nhận và Gửi phản hồi'}</button>
+                {!testMode && <p className={oaUid && followedOA ? 'identity ready' : 'identity pending'}>{oaUid && followedOA ? '✓ Đã nhận diện và quan tâm Official Account' : oaUid ? 'Vui lòng quan tâm Official Account trước khi gửi' : sdkAvailable ? 'Đang chờ idByOA từ Zalo…' : 'Mở trong Zalo để Mini App nhận diện tài khoản'}</p>}
+                <button className="submit-button" type="submit" disabled={busy || !stars || (!oaUid && !testMode) || (!followedOA && !testMode)}>{busy ? 'Đang xác nhận và gửi…' : 'Xác nhận và Gửi phản hồi'}</button>
                 <p className="privacy">Thông tin định danh chỉ được dùng để xác định đúng hồ sơ và chống gửi trùng.</p>
               </form>
             )}

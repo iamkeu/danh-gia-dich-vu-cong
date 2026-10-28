@@ -8,6 +8,7 @@ import { sendCase } from '@/lib/public-service/notifications';
 
 const schema = z.object({
   oaUid: z.string().trim().min(1).max(200),
+  followedOA: z.boolean(),
   oaAccountId: z.string().uuid().nullable().optional(),
   stars: z.number().int().min(1).max(5),
   comment: z.string().max(1000).optional().default(''),
@@ -35,6 +36,7 @@ export async function POST(request: NextRequest, { params }: { params: { token: 
     }
     const body = schema.parse(await request.json());
     const comment = body.comment.trim();
+    if (!body.followedOA) return miniAppJson({ error: { code: 'OA_FOLLOW_REQUIRED', message: 'Vui lòng quan tâm Official Account trước khi gửi phản hồi để nhận giấy hẹn qua Zalo.' } }, { status: 403 });
     if (comment && !body.commentConsent) {
       return miniAppJson({ error: { code: 'COMMENT_CONSENT_REQUIRED', message: 'Vui lòng đồng ý trước khi gửi góp ý' } }, { status: 400 });
     }
