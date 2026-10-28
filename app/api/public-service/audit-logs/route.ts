@@ -1,5 +1,11 @@
 import { NextResponse } from 'next/server';
+import { z } from 'zod';
 import { publicServiceAuthError, requirePublicServiceAccount } from '@/lib/public-service/auth';
+
+const cleanupSchema = z.object({
+  from: z.string().date(),
+  to: z.string().date(),
+});
 
 export async function GET() {
   try {
@@ -36,6 +42,24 @@ export async function GET() {
     const actorMap = new Map((actors || []).map(item => [item.id, item]));
     return NextResponse.json({ data: uniqueLogs.map(log => ({ ...log, case: log.case_id ? caseMap.get(log.case_id) || null : null, actor: log.actor_account_id ? actorMap.get(log.actor_account_id) || null : null })) });
   } catch (error) {
+    return publicServiceAuthError(error);
+  }
+}
+
+export async function DELETE(request: Request) {
+  try {
+    const { db } = await requirePublicServiceAccount(['admin']);
+    const body = cleanupSchema.parse(await request.json());
+    const from = new Date(`${body.from}T00:00:00.000Z`);
+    const to = new Date(`${body.to}T23:59:59.999Z`);
+    if (from > to) return NextResponse.json({ error: { code: 'INVALID_DATE_RANGE', message: 'Khoảng thời gian không hợp lệ' } }, { status: 400 });
+    const { count, error: countError } = await db.from('service_case_audit_logs').select('id', { count: 'exact', head: true }).gte('created_at', from.toISOString()).lte('created_at', to.toISOString());
+    if (countError) throw countError;
+    const { error } = await db.from('service_case_audit_logs').delete().gte('created_at', from.toISOString()).lte('created_at', to.toISOString());
+    if (error) throw error;
+    return NextResponse.json({ data: { deleted: count || 0, from: body.from, to: body.to } });
+  } catch (error) {
+    if (error instanceof z.ZodError) return NextResponse.json({ error: { code: 'VALIDATION_ERROR', message: 'Vui lòng nhập ngày bắt đầu và ngày kết thúc hợp lệ' } }, { status: 400 });
     return publicServiceAuthError(error);
   }
 }
