@@ -4,6 +4,7 @@ import { hashOpaqueValue } from '@/lib/public-service/auth';
 import { createSupabaseAdminClient } from '@/lib/supabase/server';
 import { encryptToken } from '@/lib/zalo/token-store';
 import { miniAppJson, miniAppOptions } from '@/lib/public-service/cors';
+import { sendCase } from '@/lib/public-service/notifications';
 
 const schema = z.object({
   oaUid: z.string().trim().min(1).max(200),
@@ -12,6 +13,16 @@ const schema = z.object({
   comment: z.string().max(1000).optional().default(''),
   commentConsent: z.boolean().default(false),
 });
+
+async function autoSendAppointment(caseId: string) {
+  try {
+    const result = await sendCase(caseId, null, 'appointment_file');
+    return { status: result.failedParts.length ? 'failed' : 'sent', failedParts: result.failedParts };
+  } catch (error) {
+    console.error('citizen_auto_oa_send_failed', { caseId, error: error instanceof Error ? error.message : String(error) });
+    return { status: 'failed', failedParts: [{ part: 'appointment_file', error_code: error instanceof Error ? error.message.split(':')[0] : 'AUTO_OA_SEND_FAILED' }] };
+  }
+}
 
 export function OPTIONS() {
   return miniAppOptions();
@@ -48,7 +59,9 @@ export async function POST(request: NextRequest, { params }: { params: { token: 
     const { data: existingRating } = await db.from('service_ratings').select('id,stars,submitted_at').eq('case_id', token.case_id).maybeSingle();
     if (existingRating) {
       await db.from('service_cases').update({ status: 'rated', updated_at: new Date().toISOString() }).eq('id', token.case_id);
-      return miniAppJson({ data: { rating: existingRating, message: 'Hồ sơ này đã được xác nhận và gửi phản hồi trước đó' } }, { status: 200 });
+      const notification = await autoSendAppointment(token.case_id);
+      await db.from('service_case_audit_logs').insert({ case_id: token.case_id, actor_account_id: null, action: 'case.oa_auto_send_after_rating', metadata: { status: notification.status, failedParts: notification.failedParts, retry: true } });
+      return miniAppJson({ data: { rating: existingRating, notification, message: 'Hồ sơ này đã được xác nhận và gửi phản hồi trước đó' } }, { status: 200 });
     }
     const { data: link, error } = await db.from('service_case_links').upsert({
       case_id: token.case_id,
@@ -81,7 +94,9 @@ export async function POST(request: NextRequest, { params }: { params: { token: 
     const { error: statusError } = await db.from('service_cases').update({ status: 'rated', updated_at: new Date().toISOString() }).eq('id', token.case_id);
     if (statusError) console.error('citizen_confirm_status_update_failed', { caseId: token.case_id, code: statusError.code, message: statusError.message });
     await db.from('service_case_audit_logs').insert({ case_id: token.case_id, actor_account_id: null, action: 'case.citizen_confirmed_and_rated', metadata: { method: 'citizen_qr', oaAccountId, stars: body.stars, hasComment: Boolean(comment) } });
-    return miniAppJson({ data: { ...link, rating, message: 'Đã xác nhận và gửi phản hồi thành công' } }, { status: 201 });
+    const notification = await autoSendAppointment(token.case_id);
+    await db.from('service_case_audit_logs').insert({ case_id: token.case_id, actor_account_id: null, action: 'case.oa_auto_send_after_rating', metadata: { status: notification.status, failedParts: notification.failedParts } });
+    return miniAppJson({ data: { ...link, rating, notification, message: 'Đã xác nhận và gửi phản hồi thành công' } }, { status: 201 });
   } catch (error) {
     if (error instanceof z.ZodError) return miniAppJson({ error: { code: 'VALIDATION_ERROR', message: error.issues[0]?.message || 'Dữ liệu không hợp lệ' } }, { status: 400 });
     console.error('citizen_confirm_unhandled_error', error);

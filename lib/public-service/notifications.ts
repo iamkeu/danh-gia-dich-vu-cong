@@ -5,7 +5,7 @@ import { uploadFile, sendFile, sendRatingInvitation } from '@/lib/zalo/client';
 
 const bucket = () => process.env.SUPABASE_STORAGE_BUCKET || 'danh-gia-dich-vu-cong-files';
 
-export async function sendCase(caseId: string, actorId: string, onlyPart?: 'appointment_file' | 'rating_invitation', actorRole?: string) {
+export async function sendCase(caseId: string, actorId: string | null, onlyPart?: 'appointment_file' | 'rating_invitation', actorRole?: string) {
   const db = createSupabaseAdminClient();
   const { data: item, error } = await db.from('service_cases').select('id,case_code,status,pdf_storage_path,created_by').eq('id', caseId).single();
   if (error || !item) throw new Error('CASE_NOT_FOUND');
@@ -79,7 +79,7 @@ export async function sendCase(caseId: string, actorId: string, onlyPart?: 'appo
   const status = item.status === 'rated' ? 'rated' : notificationStatus;
   const update = db.from('service_cases').update({ status, sent_at: status === 'sent' ? new Date().toISOString() : item.status === 'rated' ? undefined : null, updated_at: new Date().toISOString() }).eq('id', caseId).neq('status', 'rated');
   if (item.status !== 'rated') await update;
-  await db.from('service_case_audit_logs').insert({ case_id: caseId, actor_account_id: actorId, action: 'case.notifications.processed', metadata: { onlyPart: onlyPart || null, status } });
   const failedParts = (attempts || []).filter((attempt) => attempt.status === 'failed');
+  await db.from('service_case_audit_logs').insert({ case_id: caseId, actor_account_id: actorId, action: 'case.notifications.processed', metadata: { onlyPart: onlyPart || null, status, sentParts: (attempts || []).filter((attempt) => attempt.status === 'sent').map((attempt) => attempt.part), failedParts: failedParts.map((attempt) => ({ part: attempt.part, code: attempt.error_code || null })) } });
   return { status, miniAppUrl, attempts: attempts || [], failedParts };
 }
