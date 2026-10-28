@@ -7,6 +7,34 @@ async function call(url: string, init: RequestInit) {
   return body;
 }
 
+type OAProfileResponse = { data?: { oa_type?: number | string }; oa_type?: number | string };
+
+export function messageEndpointForOAType(oaType: number): string {
+  return oaType === 4
+    ? 'https://openapi.zalo.me/v2.0/oa/message'
+    : 'https://openapi.zalo.me/v3.0/oa/message/cs';
+}
+
+async function getMessageApiVersion(oaId: string): Promise<'v2' | 'v3'> {
+  const profile = await getOAProfile(oaId) as OAProfileResponse;
+  const rawType = profile.data?.oa_type ?? profile.oa_type;
+  const oaType = Number(rawType);
+  if (!Number.isFinite(oaType)) throw new Error('OA_TYPE_UNAVAILABLE:Không xác định được loại OA để chọn API gửi tin');
+  // Zalo OA cơ quan nhà nước (oa_type=4) chưa hỗ trợ API gửi tin v3.
+  return oaType === 4 ? 'v2' : 'v3';
+}
+
+async function sendConsultationMessage(oaId: string, body: unknown) {
+  const version = await getMessageApiVersion(oaId);
+  const endpoint = messageEndpointForOAType(version === 'v2' ? 4 : 2);
+  const token = await getValidAccessToken(oaId);
+  return call(endpoint, {
+    method: 'POST',
+    headers: { access_token: token, 'content-type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+}
+
 export async function getOAProfile(oaId: string) {
   const token = await getValidAccessToken(oaId);
   return call('https://openapi.zalo.me/v2.0/oa/getoa', { headers: { access_token: token } });
@@ -20,20 +48,10 @@ export async function uploadFile(oaId: string, bytes: Buffer, name: string, mime
 }
 
 export async function sendFile(oaId: string, userId: string, fileToken: string) {
-  const token = await getValidAccessToken(oaId);
-  return call('https://openapi.zalo.me/v3.0/oa/message/cs', {
-    method: 'POST',
-    headers: { access_token: token, 'content-type': 'application/json' },
-    body: JSON.stringify({ recipient: { user_id: userId }, message: { attachment: { type: 'file', payload: { token: fileToken } } } }),
-  });
+  return sendConsultationMessage(oaId, { recipient: { user_id: userId }, message: { attachment: { type: 'file', payload: { token: fileToken } } } });
 }
 
 export async function sendRatingInvitation(oaId: string, userId: string, miniAppUrl: string) {
-  const token = await getValidAccessToken(oaId);
   const text = `Trung tâm Phục vụ Hành chính công\n\nGiấy hẹn trả kết quả đã được phát hành.\nVui lòng xem giấy hẹn đính kèm và đánh giá chất lượng phục vụ tại:\n${miniAppUrl}`;
-  return call('https://openapi.zalo.me/v3.0/oa/message/cs', {
-    method: 'POST',
-    headers: { access_token: token, 'content-type': 'application/json' },
-    body: JSON.stringify({ recipient: { user_id: userId }, message: { text } }),
-  });
+  return sendConsultationMessage(oaId, { recipient: { user_id: userId }, message: { text } });
 }
