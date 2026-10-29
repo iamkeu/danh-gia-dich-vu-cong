@@ -1,25 +1,30 @@
 import { createHash, randomBytes } from 'node:crypto';
 import { createSupabaseAdminClient } from '@/lib/supabase/server';
 import { decryptToken } from '@/lib/zalo/token-store';
-import { uploadFile, sendFile, sendRatingInvitation } from '@/lib/zalo/client';
+import { uploadFile, sendFile, sendTextMessage } from '@/lib/zalo/client';
+import { DEFAULT_NOTIFICATION_TEMPLATES, renderNotificationTemplate, type NotificationTemplateKey } from '@/lib/public-service/notification-templates';
 
 const bucket = () => process.env.SUPABASE_STORAGE_BUCKET || 'danh-gia-dich-vu-cong-files';
 
-export async function sendCase(caseId: string, actorId: string | null, onlyPart?: 'appointment_file' | 'rating_invitation', actorRole?: string) {
+export async function sendCase(caseId: string, actorId: string | null, onlyPart?: 'appointment_message' | 'appointment_file' | 'rating_invitation', actorRole?: string, messageTemplate?: NotificationTemplateKey) {
   const db = createSupabaseAdminClient();
-  const { data: item, error } = await db.from('service_cases').select('id,case_code,status,pdf_storage_path,created_by').eq('id', caseId).single();
+  const { data: item, error } = await db.from('service_cases').select('id,case_code,status,pdf_storage_path,created_by,citizen_display_name,procedure_name,department_name,officer_name,appointment_date').eq('id', caseId).single();
   if (error || !item) throw new Error('CASE_NOT_FOUND');
   if (actorRole === 'operator' && item.created_by !== actorId) throw new Error('FORBIDDEN');
   const { data: link } = await db.from('service_case_links').select('oa_account_id,oa_uid_ciphertext').eq('case_id', caseId).single();
   if (!link?.oa_account_id || !link.oa_uid_ciphertext) throw new Error('CASE_NOT_LINKED');
   const { data: oa } = await db.from('zalo_oa_accounts').select('id').eq('id', link.oa_account_id).eq('is_active', true).single();
   if (!oa) throw new Error('OA_NOT_CONNECTED');
+  const { data: savedTemplates } = await db.from('service_notification_templates').select('template_key,content').eq('oa_account_id', link.oa_account_id);
+  const templates = { ...DEFAULT_NOTIFICATION_TEMPLATES } as Record<NotificationTemplateKey, string>;
+  for (const saved of savedTemplates || []) if (saved.template_key in templates) templates[saved.template_key as NotificationTemplateKey] = saved.content;
   const uid = decryptToken(link.oa_uid_ciphertext);
-  const parts: Array<'appointment_file' | 'rating_invitation'> = onlyPart
+  const parts: Array<'appointment_message' | 'appointment_file' | 'rating_invitation'> = onlyPart
     ? [onlyPart]
     : item.status === 'rated'
-      ? ['appointment_file']
+      ? ['appointment_message', 'appointment_file']
       : ['appointment_file', 'rating_invitation'];
+  const renderedValues = { citizen_name: item.citizen_display_name, case_code: item.case_code, procedure_name: item.procedure_name, appointment_date: item.appointment_date, department_name: item.department_name, officer_name: item.officer_name };
   const token = randomBytes(32).toString('base64url');
   const tokenHash = createHash('sha256').update(token).digest('hex');
   const miniAppUrl = process.env.ZALO_MINI_APP_ID
@@ -53,7 +58,11 @@ export async function sendCase(caseId: string, actorId: string | null, onlyPart?
         throw claim.error;
       }
       let messageId = '';
-      if (part === 'appointment_file') {
+      if (part === 'appointment_message') {
+        const key = messageTemplate || (item.status === 'rated' ? 'resend_pdf' : 'post_rating');
+        const sent = await sendTextMessage(oa.id, uid, renderNotificationTemplate(templates[key], renderedValues));
+        messageId = String(sent.data?.message_id || sent.message_id || '');
+      } else if (part === 'appointment_file') {
         if (!item.pdf_storage_path) throw new Error('PDF_NOT_UPLOADED');
         const { data: file, error: fileError } = await db.storage.from(bucket()).download(item.pdf_storage_path);
         if (fileError || !file) throw new Error('PDF_NOT_FOUND');
@@ -64,7 +73,8 @@ export async function sendCase(caseId: string, actorId: string | null, onlyPart?
       } else {
         const tokenInsert = await db.from('service_case_tokens').insert({ case_id: caseId, token_hash: tokenHash, expires_at: new Date(Date.now() + 7 * 86400000).toISOString() });
         if (tokenInsert.error) throw tokenInsert.error;
-        const sent = await sendRatingInvitation(oa.id, uid, miniAppUrl);
+        const invitation = `${renderNotificationTemplate(templates.rating_invitation, renderedValues)}\n\nMở Mini App: ${miniAppUrl}`;
+        const sent = await sendTextMessage(oa.id, uid, invitation);
         messageId = String(sent.data?.message_id || sent.message_id || '');
       }
       await db.from('service_notification_attempts').update({ status: 'sent', message_id: messageId || null, retry_count: 0, error_code: null, error_message: null, updated_at: new Date().toISOString() }).eq('case_id', caseId).eq('part', part).eq('idempotency_key', key);

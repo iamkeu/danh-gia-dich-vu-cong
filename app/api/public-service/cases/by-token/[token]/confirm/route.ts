@@ -17,7 +17,7 @@ const schema = z.object({
 
 async function autoSendAppointment(caseId: string) {
   try {
-    const result = await sendCase(caseId, null, 'appointment_file');
+    const result = await sendCase(caseId, null, undefined, undefined, 'post_rating');
     return { status: result.failedParts.length ? 'failed' : 'sent', failedParts: result.failedParts };
   } catch (error) {
     console.error('citizen_auto_oa_send_failed', { caseId, error: error instanceof Error ? error.message : String(error) });

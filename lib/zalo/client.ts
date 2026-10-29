@@ -55,9 +55,12 @@ export async function sendFile(oaId: string, userId: string, fileToken: string) 
   return sendConsultationMessage(oaId, { recipient: { user_id: userId }, message: { attachment: { type: 'file', payload: { token: fileToken } } } });
 }
 
-export async function sendRatingInvitation(oaId: string, userId: string, miniAppUrl: string) {
-  const text = `Trung tâm Phục vụ Hành chính công\n\nGiấy hẹn trả kết quả đã được phát hành.\nVui lòng xem giấy hẹn đính kèm và đánh giá chất lượng phục vụ tại:\n${miniAppUrl}`;
+export async function sendTextMessage(oaId: string, userId: string, text: string) {
   return sendConsultationMessage(oaId, { recipient: { user_id: userId }, message: { text } });
+}
+
+export async function sendRatingInvitation(oaId: string, userId: string, miniAppUrl: string) {
+  return sendTextMessage(oaId, userId, `Trung tâm Phục vụ Hành chính công\n\nGiấy hẹn trả kết quả đã được phát hành.\nVui lòng xem giấy hẹn đính kèm và đánh giá chất lượng phục vụ tại:\n${miniAppUrl}`);
 }
 
 export async function getConversation(oaId: string, userId: string, offset = 0, count = 10) {
